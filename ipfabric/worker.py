@@ -7,12 +7,15 @@ from django_rq import job
 
 import requests
 import yaml
+import logging
 
 from nautobot_chatops.workers import subcommand_of, handle_subcommands
 from nautobot_chatops.choices import CommandStatusChoices
 
 # Import config vars from nautobot_config.py
 EXAMPLE_VAR = settings.PLUGINS_CONFIG["ipfabric"].get("example_var")
+
+logger = logging.getLogger("rq.worker")
 
 
 @job("default")
@@ -21,11 +24,24 @@ def ipfabric(subcommand, **kwargs):
     return handle_subcommands("ipfabric", subcommand, **kwargs)
 
 
+def prompt_hello_input(action_id, help_text, dispatcher, choices=None):
+    """Prompt the user for input"""
+    welcome_choices = ["Hi", "Hello", "Hola", "Howya"]
+    choices = [(welcome, welcome.lower()) for welcome in welcome_choices]
+    dispatcher.prompt_from_menu(action_id, help_text, choices)
+    return False
+
+
 @subcommand_of("ipfabric")
-def hello_world(dispatcher, arg1):
+def hello_world(dispatcher, arg1=None):
     """Run logic and return to user via client command '/ipfabric hello-world arg1'."""
 
-    dispatcher.send_markdown(f"Command /ipfabric hello-world received with arg1={arg1}")
+    if not arg1:
+        prompt_hello_input("ipfabric hello-world", "What would you like to say?", dispatcher)
+        return False
+
+    logger.info(f"Received arg1 {arg1}")
+    dispatcher.send_markdown(f"Just wanted to say {arg1}")
 
     # Logic/external API calls go here
 

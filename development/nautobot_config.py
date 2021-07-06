@@ -40,8 +40,50 @@ def is_truthy(arg):
         return arg
     return bool(strtobool(arg))
 
+DEBUG = False
+
+LOG_LEVEL = "DEBUG" if DEBUG else "INFO"
 
 TESTING = len(sys.argv) > 1 and sys.argv[1] == "test"
+
+# Verbose logging during normal development operation, but quiet logging during unit test execution
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "normal": {
+            "format": "%(asctime)s.%(msecs)03d %(levelname)-7s %(name)s :\n  %(message)s",
+            "datefmt": "%H:%M:%S",
+        },
+        "verbose": {
+            "format": "%(asctime)s.%(msecs)03d %(levelname)-7s %(name)-20s %(filename)-15s %(funcName)30s() :\n  %(message)s",
+            "datefmt": "%H:%M:%S",
+        },
+    },
+    "handlers": {
+        "normal_console": {
+            "level": "INFO",
+            "class": "rq.utils.ColorizingStreamHandler",
+            "formatter": "normal",
+        },
+        "verbose_console": {
+            "level": "DEBUG",
+            "class": "rq.utils.ColorizingStreamHandler",
+            "formatter": "verbose",
+        },
+    },
+    "loggers": {
+        "django": {"handlers": ["normal_console"], "level": "INFO"},
+        "nautobot": {
+            "handlers": ["verbose_console" if DEBUG else "normal_console"],
+            "level": LOG_LEVEL,
+        },
+        "rq.worker": {
+            "handlers": ["verbose_console" if DEBUG else "normal_console"],
+            "level": LOG_LEVEL,
+        },
+    },
+}
 
 # This is a list of valid fully-qualified domain names (FQDNs) for the Nautobot server. Nautobot will not permit write
 # access to the server via any other hostnames. The first FQDN in the list will be treated as the preferred name.
