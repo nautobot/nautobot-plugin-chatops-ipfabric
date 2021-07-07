@@ -40,6 +40,7 @@ def is_truthy(arg):
         return arg
     return bool(strtobool(arg))
 
+
 DEBUG = False
 
 LOG_LEVEL = "DEBUG" if DEBUG else "INFO"
@@ -304,11 +305,9 @@ PLUGINS_CONFIG = {
         "mattermost_url": os.environ.get("MATTERMOST_URL"),
         "enable_ms_teams": os.environ.get("ENABLE_MS_TEAMS", False),
         "microsoft_app_id": os.environ.get("MICROSOFT_APP_ID"),
-        "microsoft_app_password": os.environ.get("MICROSOFT_APP_PASSWORD")
+        "microsoft_app_password": os.environ.get("MICROSOFT_APP_PASSWORD"),
     },
-    "ipfabric": {
-        "foo": "bar"
-    }
+    "ipfabric": {"foo": "bar"},
 }
 
 # When determining the primary IP address for a device, IPv6 is preferred over IPv4 by default. Set this to True to
