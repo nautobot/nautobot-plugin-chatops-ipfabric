@@ -8,7 +8,7 @@ env:
   # Each version of Nautobot listed here must have a corresponding directory/configuration file
   # under development/nautobot_<NAUTOBOT_VER>/configuration.py
   matrix:
-    - "INVOKE_IPFABRIC_NAUTOBOT_VER=1.0.0"
+    - "INVOKE_IPFABRIC_NAUTOBOT_VER=1.0.3"
 # Add your encrypted secret below, you can encrypt secret using "travis encrypt"
 # https://docs.travis-ci.com/user/environment-variables/#defining-encrypted-variables-in-travisyml
 # global:
@@ -23,7 +23,7 @@ before_script:
   - "curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py > /tmp/get-poetry.py"
   - "python /tmp/get-poetry.py -y --version 1.1.6"
   - "source $HOME/.poetry/env"
-  - "cp development/creds.env.example development/creds.env"
+  - "cp development/creds.example.env development/creds.env"
 
 script:
   # If you want to test different versions, it may require updating the poetry definition for Nautobot
