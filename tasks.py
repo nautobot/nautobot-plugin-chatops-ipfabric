@@ -38,7 +38,7 @@ namespace = Collection("ipfabric")
 namespace.configure(
     {
         "ipfabric": {
-            "nautobot_ver": "develop-latest",
+            "nautobot_ver": "latest",
             "project_name": "ipfabric",
             "python_ver": "3.6",
             "local": False,

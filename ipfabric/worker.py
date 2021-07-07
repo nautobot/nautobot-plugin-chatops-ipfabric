@@ -26,7 +26,7 @@ def ipfabric(subcommand, **kwargs):
 
 def prompt_hello_input(action_id, help_text, dispatcher, choices=None):
     """Prompt the user for input"""
-    welcome_choices = ["Hi", "Hello", "Hola", "Howya"]
+    welcome_choices = ["Hi", "Hello", "Hola", "Ciao"]
     choices = [(welcome, welcome.lower()) for welcome in welcome_choices]
     dispatcher.prompt_from_menu(action_id, help_text, choices)
     return False

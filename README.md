@@ -4,11 +4,7 @@ A plugin for [Nautobot](https://github.com/nautobot/nautobot).
 
 ## Installation
 
-The plugin is available as a Python package in pypi and can be installed with pip
-
-```shell
-pip install ipfabric
-```
+### TODO
 
 > The plugin is compatible with Nautobot 1.0.0 and higher
 
@@ -37,6 +33,27 @@ PLUGINS_CONFIG = {
 The plugin behavior can be controlled with the following list of settings
 
 - TODO
+
+## Development
+
+The development environment supports a self-contained environment for developing nautobot chatops commands.
+
+Build of the environment requires `python3-invoke`.  For development purposes, install `poetry` and use it to manage the required packages. 
+
+```
+poetry install        # first time use
+poetry shell
+```
+
+You can start the deveopment containers locally with an `invoke build` and `invoke start` after copying `creds.env` locally.
+
+```
+cp development/creds.env.example development/creds.env
+invoke build
+invoke start
+```
+
+You should be able to access nautobot at http://0.0.0.0:8080
 
 ## Usage
 
