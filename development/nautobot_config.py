@@ -307,7 +307,10 @@ PLUGINS_CONFIG = {
         "microsoft_app_id": os.environ.get("MICROSOFT_APP_ID"),
         "microsoft_app_password": os.environ.get("MICROSOFT_APP_PASSWORD"),
     },
-    "ipfabric": {"foo": "bar"},
+    "ipfabric": {
+        "IPFABRIC_API_TOKEN": os.environ.get("IPFABRIC_API_TOKEN"),
+        "IPFABRIC_HOST": os.environ.get("IPFABRIC_HOST"),
+    },
 }
 
 # When determining the primary IP address for a device, IPv6 is preferred over IPv4 by default. Set this to True to
