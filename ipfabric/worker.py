@@ -1,22 +1,24 @@
 """Worker functions implementing Nautobot "ipfabric" command and subcommands."""
 import logging
-
-# import json
+import requests
 
 from django.conf import settings
 from django_rq import job
 
-# import requests
-# import yaml
-
 from nautobot_chatops.workers import subcommand_of, handle_subcommands
 
-# from nautobot_chatops.choices import CommandStatusChoices
-
 # Import config vars from nautobot_config.py
-EXAMPLE_VAR = settings.PLUGINS_CONFIG["ipfabric"].get("example_var")
+API_TOKEN = settings.PLUGINS_CONFIG["ipfabric"].get("IPFABRIC_API_TOKEN")
+IPFABRIC_HOST = settings.PLUGINS_CONFIG["ipfabric"].get("IPFABRIC_HOST")
+IPFABRIC_LOGO_PATH = "ipfabric/ipfabric_logo.png"
+IPFABRIC_LOGO_ALT = "IPFabric Logo"
 
 logger = logging.getLogger("rq.worker")
+
+
+def ipfabric_logo(dispatcher):
+    """Construct an image_element containing the locally hosted IP Fabric logo."""
+    return dispatcher.image_element(dispatcher.static_url(IPFABRIC_LOGO_PATH), alt_text=IPFABRIC_LOGO_ALT)
 
 
 @job("default")
@@ -40,27 +42,49 @@ def hello_world(dispatcher, arg1=None):
         prompt_hello_input("ipfabric hello-world", "What would you like to say?", dispatcher)
         return False
 
-    logger.info("Received arg1 %s", arg1)
+    logger.debug("Received arg1 %s", arg1)
     dispatcher.send_markdown(f"Just wanted to say {arg1}")
+    return True
 
-    # Logic/external API calls go here
 
-    # Send Markdown formatted text
-    # dispatcher.send_markdown(f"Markdown formatted text goes here.")
+@subcommand_of("ipfabric")
+def device_list(dispatcher):
+    """IP Fabric Inventory device list."""
+    url = IPFABRIC_HOST + "/api/v1/tables/inventory/devices"
 
-    # Send block of text
-    # dispatcher.send_blocks(
-    #     [
-    #         *dispatcher.command_response_header(
-    #             "ipfabric", "hello-world",
-    #         ),
-    #         dispatcher.markdown_block(f"example-return-string"),
-    #     ]
-    # )
+    logger.debug("Received device list request")
 
-    # Send large table
-    # dispatcher.send_large_table(
-    #     ["Name", "Description"],
-    #     ["name1", "description1"],
-    # )
+    # columns and snapshot required
+    payload = {
+        "columns": ["hostname", "siteName", "vendor", "platform", "model"],
+        "filters": {},
+        "pagination": {"limit": 15, "start": 0},
+        "snapshot": "$last",
+    }
+    # auth is contained in the 'X-API-Token' in the header
+    headers = {"Accept": "application/json", "Content-Type": "application/json", "X-API-Token": API_TOKEN}
+
+    response = requests.post(url, json=payload, headers=headers)
+    devices = response.json().get("data", {})
+
+    dispatcher.send_blocks(
+        [
+            *dispatcher.command_response_header(
+                "ipfabric",
+                "device-list",
+                [],
+                "Inventory Device List",
+                ipfabric_logo(dispatcher),
+            ),
+            dispatcher.markdown_block(f"{IPFABRIC_HOST}/inventory/devices"),
+        ]
+    )
+
+    dispatcher.send_large_table(
+        ["Hostname", "Site", "Vendor", "Platform", "Model"],
+        [
+            (device["hostname"], device["siteName"], device["vendor"], device["platform"], device["model"])
+            for device in devices
+        ],
+    )
     return True
