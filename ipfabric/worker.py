@@ -42,7 +42,7 @@ def hello_world(dispatcher, arg1=None):
         prompt_hello_input("ipfabric hello-world", "What would you like to say?", dispatcher)
         return False
 
-    logger.info("Received arg1 %s", arg1)
+    logger.debug("Received arg1 %s", arg1)
     dispatcher.send_markdown(f"Just wanted to say {arg1}")
     return True
 
@@ -52,7 +52,7 @@ def device_list(dispatcher):
     """IP Fabric Inventory device list."""
     url = IPFABRIC_HOST + "/api/v1/tables/inventory/devices"
 
-    logger.info("Received device list request")
+    logger.debug("Received device list request")
 
     # columns and snapshot required
     payload = {
