@@ -37,12 +37,10 @@ script:
 #  when a new tag is created in master. You"ll also need to generate a dedicated API key for this project in pypi
 #  and encrypt the key with "travis encrypt PYPI_TOKEN=<value> --add env.global --com"
 # --------------------------------------------------------------------------
-# deploy:
-#   provider: script
-#   script: poetry config pypi-token.pypi $PYPI_TOKEN && poetry publish --build
-#   skip_cleanup: true
-#   on:
-#     tags: true
-#     branch: master
-#     condition: $NAUTOBOT_VER = master
-#     python: 3.7
+deploy:
+  provider: script
+  script: ./continuous_deployment.sh
+  skip_cleanup: true
+  on:
+    branch: develop
+    python: 3.7
