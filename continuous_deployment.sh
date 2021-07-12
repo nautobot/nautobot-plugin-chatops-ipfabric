@@ -5,9 +5,10 @@ set -euo pipefail
 # Hardcoded IP for the development server
 TARGET_HOST_IP=159.65.241.133
 
+openssl aes-256-cbc -K $encrypted_7d8846f60ae2_key -iv $encrypted_7d8846f60ae2_iv -in kitt-generic-ssh-key.enc -out /tmp/kitt-generic-ssh-key -d
 chmod 600  /tmp/kitt-generic-ssh-key
 eval "$(ssh-agent -s)"
-openssl aes-256-cbc -K $encrypted_7d8846f60ae2_key -iv $encrypted_7d8846f60ae2_iv -in kitt-generic-ssh-key.enc -out /tmp/kitt-generic-ssh-key -d
+
 echo "INFO: Connecting via SSH to ${TARGET_HOST_IP}"
 
 # There are a lot of assumptions taken to simplify such as:
