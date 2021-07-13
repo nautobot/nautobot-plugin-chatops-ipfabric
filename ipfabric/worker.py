@@ -7,9 +7,6 @@ from django_rq import job
 
 from nautobot_chatops.workers import subcommand_of, handle_subcommands
 
-# Import config vars from nautobot_config.py
-API_TOKEN = settings.PLUGINS_CONFIG["ipfabric"].get("IPFABRIC_API_TOKEN")
-IPFABRIC_HOST = settings.PLUGINS_CONFIG["ipfabric"].get("IPFABRIC_HOST")
 IPFABRIC_LOGO_PATH = "ipfabric/ipfabric_logo.png"
 IPFABRIC_LOGO_ALT = "IPFabric Logo"
 
@@ -35,50 +32,52 @@ def prompt_hello_input(action_id, help_text, dispatcher, choices=None):
     return False
 
 
-def get_devices_info():
-    # TODO: move all the ipfabric into a class or/and implement some caching mechansm
-    url = IPFABRIC_HOST + "/api/v1/tables/inventory/devices"
+class IpFabric:
+    def __init__(self, host_url, token):
+        # auth is contained in the 'X-API-Token' in the header
+        self.headers = {"Accept": "application/json", "Content-Type": "application/json", "X-API-Token": token}
+        self.host_url = host_url
 
-    logger.debug("Received device list request")
+    def get_response(self, url, payload):
+        response = requests.post(self.host_url + url, json=payload, headers=self.headers)
+        return response.json().get("data", {})
 
-    # columns and snapshot required
-    payload = {
-        "columns": ["hostname", "siteName", "vendor", "platform", "model"],
-        "filters": {},
-        "pagination": {"limit": 15, "start": 0},
-        "snapshot": "$last",
-    }
-    # auth is contained in the 'X-API-Token' in the header
-    headers = {"Accept": "application/json", "Content-Type": "application/json", "X-API-Token": API_TOKEN}
+    def get_devices_info(self):
+        logger.debug("Received device list request")
 
-    response = requests.post(url, json=payload, headers=headers)
-    return response.json().get("data", {})
+        # columns and snapshot required
+        payload = {
+            "columns": ["hostname", "siteName", "vendor", "platform", "model"],
+            "filters": {},
+            "pagination": {"limit": 15, "start": 0},
+            "snapshot": "$last",
+        }
+        return self.get_response("/api/v1/tables/inventory/devices", payload)
+
+    def get_interfaces_load_info(self, device):
+        logger.debug("Received interface counters request")
+
+        # columns and snapshot required
+        payload = {
+            "columns": ["intName", "inBytes", "outBytes"],
+            "filters": {"hostname": ["eq", device]},
+            "pagination": {"limit": 48, "start": 0},
+            "snapshot": "$last",
+            "sort": {"order": "desc", "column": "intName"},
+        }
+
+        return self.get_response("/api/v1/tables/interfaces/load", payload)
 
 
-def get_interfaces_load_info(device):
-    # TODO: move all the ipfabric into a class or/and implement some caching mechansm
-    url = IPFABRIC_HOST + "/api/v1/tables/interfaces/load"
-
-    logger.debug("Received device list request")
-
-    # columns and snapshot required
-    payload = {
-        "columns": ["intName", "inBytes", "outBytes"],
-        "filters": {"hostname": ["eq", device]},
-        "pagination": {"limit": 48, "start": 0},
-        "snapshot": "$last",
-        "sort": {"order": "desc", "column": "intName"},
-    }
-    # auth is contained in the 'X-API-Token' in the header
-    headers = {"Accept": "application/json", "Content-Type": "application/json", "X-API-Token": API_TOKEN}
-
-    response = requests.post(url, json=payload, headers=headers)
-    return response.json().get("data", {})
+ipfabric_api = IpFabric(
+    host_url=settings.PLUGINS_CONFIG["ipfabric"].get("IPFABRIC_HOST"),
+    token=settings.PLUGINS_CONFIG["ipfabric"].get("IPFABRIC_API_TOKEN"),
+)
 
 
 def prompt_device_input(action_id, help_text, dispatcher, choices=None):
     """Prompt the user for input."""
-    choices = [(device["hostname"], device["hostname"].lower()) for device in get_devices_info()]
+    choices = [(device["hostname"], device["hostname"].lower()) for device in ipfabric_api.get_devices_info()]
     dispatcher.prompt_from_menu(action_id, help_text, choices)
     return False
 
@@ -91,7 +90,7 @@ def get_int_load(dispatcher, device=None):
         return False
 
     dispatcher.send_markdown(f"Load in interfaces for {device}.")
-    interfaces = get_interfaces_load_info(device)
+    interfaces = ipfabric_api.get_interfaces_load_info(device)
 
     dispatcher.send_blocks(
         [
@@ -102,7 +101,7 @@ def get_int_load(dispatcher, device=None):
                 "Interfaces Current Data",
                 ipfabric_logo(dispatcher),
             ),
-            dispatcher.markdown_block(f"{IPFABRIC_HOST}/technology/interfaces/rate/inbound"),
+            dispatcher.markdown_block(f"{ipfabric_api.host_url}/technology/interfaces/rate/inbound"),
         ]
     )
 
@@ -136,7 +135,7 @@ def hello_world(dispatcher, arg1=None):
 @subcommand_of("ipfabric")
 def device_list(dispatcher):
     """IP Fabric Inventory device list."""
-    devices = get_devices_info()
+    devices = ipfabric_api.get_devices_info()
 
     dispatcher.send_blocks(
         [
@@ -147,7 +146,7 @@ def device_list(dispatcher):
                 "Inventory Device List",
                 ipfabric_logo(dispatcher),
             ),
-            dispatcher.markdown_block(f"{IPFABRIC_HOST}/inventory/devices"),
+            dispatcher.markdown_block(f"{ipfabric_api.host_url}/inventory/devices"),
         ]
     )
 
