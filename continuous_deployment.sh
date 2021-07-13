@@ -5,15 +5,9 @@ set -euo pipefail
 # Hardcoded IP for the development server
 TARGET_HOST_IP=159.65.241.133
 
-if [ -z "$TARGET_HOST_KEY" ]
-then
-    echo "TARGET_HOST_KEY has not been provided."
-    exit 1
-else
-    mkdir -p ~/.ssh
-    echo "${TARGET_HOST_KEY}" >> ~/.ssh/ssh_key_ipfabric
-    chmod 600 ~/.ssh/ssh_key_ipfabric
-fi
+echo -n $TARGET_HOST_KEY | base64 -d > /tmp/instance-ssh-key
+chmod 600  /tmp/instance-ssh-key
+eval "$(ssh-agent -s)"
 
 echo "INFO: Connecting via SSH to ${TARGET_HOST_IP}"
 
@@ -21,7 +15,7 @@ echo "INFO: Connecting via SSH to ${TARGET_HOST_IP}"
 # - the folder /opt/chatbot-ipfabric is there and git is already cloned and has a deployment key to interact with git
 # - poetry is installed
 
-ssh -t -o StrictHostKeyChecking=no root@"${TARGET_HOST_IP}" -i  ~/.ssh/ssh_key_ipfabric << EOF
+ssh -t -o StrictHostKeyChecking=no root@"${TARGET_HOST_IP}" -i  /tmp/instance-ssh-key << EOF
     cd /opt/chatbot-ipfabric
     git checkout develop
     git reset --hard origin/develop
