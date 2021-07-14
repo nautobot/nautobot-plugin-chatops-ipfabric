@@ -33,16 +33,20 @@ def prompt_hello_input(action_id, help_text, dispatcher, choices=None):
 
 
 class IpFabric:
+    """IpFabric will contain all the necessary API methods."""
+
     def __init__(self, host_url, token):
-        # auth is contained in the 'X-API-Token' in the header
+        """Auth is contained in the 'X-API-Token' in the header."""
         self.headers = {"Accept": "application/json", "Content-Type": "application/json", "X-API-Token": token}
         self.host_url = host_url
 
     def get_response(self, url, payload):
+        """Post request and return response dict."""
         response = requests.post(self.host_url + url, json=payload, headers=self.headers)
         return response.json().get("data", {})
 
     def get_devices_info(self):
+        """Return Device info."""
         logger.debug("Received device list request")
 
         # columns and snapshot required
@@ -55,6 +59,7 @@ class IpFabric:
         return self.get_response("/api/v1/tables/inventory/devices", payload)
 
     def get_interfaces_load_info(self, device):
+        """Return Interface load info."""
         logger.debug("Received interface counters request")
 
         # columns and snapshot required
