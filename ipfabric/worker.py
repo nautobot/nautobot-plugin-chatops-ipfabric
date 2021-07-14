@@ -73,6 +73,28 @@ class IpFabric:
 
         return self.get_response("/api/v1/tables/interfaces/load", payload)
 
+    def get_bgp_neighbors(self, device):
+        """Retrieve BGP neighbors in IP Fabric for a specific device."""
+        logger.debug("Received BGP neighbor request")
+
+        payload = {
+            "columns": [
+                "hostname",
+                "localAs",
+                "srcInt",
+                "localAddress",
+                "vrf",
+                "neiHostname",
+                "neiAddress",
+                "neiAs",
+                "state",
+                "totalReceivedPrefixes",
+            ],
+            "snapshot": "$last",
+            "filters": {"hostname": ["eq", device]},
+        }
+        return self.get_response("/api/v1/tables/routing/protocols/bgp/neighbors", payload)
+
 
 ipfabric_api = IpFabric(
     host_url=settings.PLUGINS_CONFIG["ipfabric"].get("IPFABRIC_HOST"),
