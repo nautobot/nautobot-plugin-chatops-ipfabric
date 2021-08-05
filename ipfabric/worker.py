@@ -86,7 +86,9 @@ class IpFabric:
         payload = {}
         return self.get_response_json("GET", "/api/v1/snapshots", payload)
 
-    def get_path_simulation(self, src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id):
+    def get_path_simulation(
+        self, src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id
+    ):  # pylint: disable=too-many-arguments
         """Return End to End Path Simulation."""
         logger.debug("Received end-to-end path simulation request")
 
@@ -197,7 +199,9 @@ def device_list(dispatcher):
 
 
 @subcommand_of("ipfabric")
-def end_to_end_path(dispatcher, src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id):
+def end_to_end_path(
+    dispatcher, src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id
+):  # pylint: disable=too-many-arguments, too-many-locals
     """Execute end-to-end path simulation between source and target IP address."""
     snapshots = [(snapshot.get("id", ""), snapshot.get("id", "")) for snapshot in ipfabric_api.get_snapshots()]
 
