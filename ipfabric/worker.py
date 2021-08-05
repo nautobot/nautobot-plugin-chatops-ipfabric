@@ -73,6 +73,31 @@ class IpFabric:
 
         return self.get_response("/api/v1/tables/interfaces/load", payload)
 
+    def get_bgp_neighbors(self, device, state):
+        """Retrieve BGP neighbors in IP Fabric for a specific device."""
+        logger.debug("Received BGP neighbor request")
+
+        payload = {
+            "columns": [
+                "hostname",
+                "localAs",
+                "srcInt",
+                "localAddress",
+                "vrf",
+                "neiHostname",
+                "neiAddress",
+                "neiAs",
+                "state",
+                "totalReceivedPrefixes",
+            ],
+            "snapshot": "$last",
+            "filters": {"hostname": ["eq", device]},
+        }
+
+        if state != "any":
+            payload["filters"] = {"and": [{"hostname": ["eq", device]}, {"state": ["eq", state]}]}
+        return self.get_response("/api/v1/tables/routing/protocols/bgp/neighbors", payload)
+
 
 ipfabric_api = IpFabric(
     host_url=settings.PLUGINS_CONFIG["ipfabric"].get("IPFABRIC_HOST"),
@@ -162,4 +187,81 @@ def device_list(dispatcher):
             for device in devices
         ],
     )
+    return True
+
+
+@subcommand_of("ipfabric")
+def get_bgp_neighbors(dispatcher, device=None, state=None):
+    """Get BGP neighbors by device."""
+    if not device:
+        prompt_device_input("ipfabric get-bgp-neighbors", "Which device are you interested in", dispatcher)
+        return False
+
+    if not state:
+        dispatcher.prompt_from_menu(
+            f"ipfabric get-bgp-neighbors {device}",
+            "BGP peer state",
+            [
+                ("Any", "any"),
+                ("Established", "established"),
+                ("Idle", "idle"),
+                ("Active", "active"),
+                ("Openconfirm", "openconfirm"),
+                ("Opensent", "opensent"),
+                ("Connect", "connect"),
+            ],
+            default=("Any", "any"),
+        )
+        return False
+
+    devices = [device["hostname"] for device in ipfabric_api.get_devices_info()]
+    if device not in devices:
+        dispatcher.send_markdown(f"Device *{device}* does not exist in IP Fabric.")
+        return False
+
+    bgp_neighbors = ipfabric_api.get_bgp_neighbors(device, state)
+
+    dispatcher.send_blocks(
+        [
+            *dispatcher.command_response_header(
+                "ipfabric",
+                "get-bgp-neighbors",
+                [("Device", device), ("State", state)],
+                "BGP neighbor data",
+                ipfabric_logo(dispatcher),
+            ),
+            dispatcher.markdown_block(f"{ipfabric_api.host_url}/technology/routing/bgp/neighbors"),
+        ]
+    )
+
+    dispatcher.send_large_table(
+        [
+            "hostname",
+            "localAs",
+            "srcInt",
+            "localAddress",
+            "vrf",
+            "neiHostname",
+            "neiAddress",
+            "neiAs",
+            "state",
+            "totalReceivedPrefixes",
+        ],
+        [
+            (
+                neighbor["hostname"],
+                neighbor["localAs"],
+                neighbor["srcInt"],
+                neighbor["localAddress"],
+                neighbor["vrf"],
+                neighbor["neiHostname"],
+                neighbor["neiAddress"],
+                neighbor["neiAs"],
+                neighbor["state"],
+                neighbor["totalReceivedPrefixes"],
+            )
+            for neighbor in bgp_neighbors
+        ],
+    )
+
     return True
