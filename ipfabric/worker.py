@@ -32,7 +32,7 @@ def prompt_hello_input(action_id, help_text, dispatcher, choices=None):
     return False
 
 
-def path_simulation(src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id):
+def path_simulation(src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id):  # pylint: disable=too-many-arguments
     """Path Simulation from source to destination IP.
 
     Args:
@@ -72,7 +72,9 @@ def path_simulation(src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id):
     return path
 
 
-def get_src_dst_endpoint(src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id):
+def get_src_dst_endpoint(
+    src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id
+):  # pylint: disable=too-many-arguments
     """Get the source/destination interface and source/destination node for the path.
 
     Args:
@@ -165,7 +167,6 @@ class IpFabric:
         self, src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id
     ):  # pylint: disable=too-many-arguments
         """Return End to End Path Simulation."""
-
         params = {
             "source": src_ip,
             "destination": dst_ip,
@@ -176,7 +177,7 @@ class IpFabric:
             # "asymmetric": asymmetric,
             # "rpf": rpf,
         }
-        logger.debug("Received end-to-end path simulation request: ", params)
+        logger.debug("Received end-to-end path simulation request: ", params)  # pylint: disable=logging-too-many-args
 
         # no payload required
         payload = {}
@@ -337,7 +338,6 @@ def end_to_end_path(
     path = path_simulation(src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id)
     endpoints = get_src_dst_endpoint(src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id)
 
-    ## make function for src and dest
     dispatcher.send_markdown(
         f"{dispatcher.bold('Source: ')} {src_ip} [{endpoints.get('src')}]\n"
         f"{dispatcher.bold('Destination: ')} {dst_ip} [{endpoints.get('dst')}]\n"
