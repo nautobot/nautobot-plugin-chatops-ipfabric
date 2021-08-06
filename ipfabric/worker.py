@@ -32,6 +32,82 @@ def prompt_hello_input(action_id, help_text, dispatcher, choices=None):
     return False
 
 
+def path_simulation(src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id):
+    """Path Simulation from source to destination IP.
+
+    Args:
+        src_ip ([string]): Source IP
+        dst_ip ([string]): Destination IP
+        src_port ([string]): Source Port
+        dst_port ([string]): Destination Port
+        protocol ([string]): Transport Protocol
+        snapshot_id ([string]): Snapshot ID
+
+    Returns:
+        [list]: Parsed end-to-end path
+    """
+    response = ipfabric_api.get_path_simulation(src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id)
+    graph = response.get("graph", {})
+    nodes = {graph_node["id"]: graph_node for graph_node in graph.get("nodes", {})}
+    edges = {edge["id"]: edge for edge in graph.get("edges", {})}
+    path = []
+
+    # ipfabric returns the source of the path as the last element in the nodes list
+    for idx, node in enumerate(graph.get("nodes", [])[::-1]):
+        edge_id = node["forwarding"][0]["dstIntList"][0]["id"]
+        edge = edges.get(edge_id)
+        if idx == len(nodes) - 1:
+            continue  # don't add to path as the edge for the penultimate node will contain the 'target' node
+        path.append(
+            (
+                idx + 1,
+                node.get("hostname"),
+                edge["slabel"],
+                edge["srcAddr"],
+                edge["dstAddr"],
+                edge["tlabel"],
+                nodes.get(edge["target"], {}).get("hostname"),
+            )
+        )
+    return path
+
+
+def get_src_dst_endpoint(src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id):
+    """Get the source/destination interface and source/destination node for the path.
+
+    Args:
+        src_ip ([string]): Source IP
+        dst_ip ([string]): Destination IP
+        src_port ([string]): Source Port
+        dst_port ([string]): Destination Port
+        protocol ([string]): Transport Protocol
+        snapshot_id ([string]): Snapshot ID
+
+    Returns:
+        [dict]: Src and Dst interface and node strings
+    """
+    response = ipfabric_api.get_path_simulation(src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id)
+    graph = response.get("graph", {})
+
+    endpoints = {}
+    src_intf = ""
+    dst_intf = ""
+    src_node = ""
+    dst_node = ""
+
+    # ipfabric returns the source of the path as the last element in the nodes list
+    for idx, node in enumerate(graph.get("nodes", [])[::-1]):
+        if idx == 0:
+            src_intf = node["forwarding"][0]["srcIntList"][0]["int"]
+            src_node = node.get("hostname")
+            endpoints["src"] = f"{src_intf} - {src_node}"
+        if idx == len(graph.get("nodes", [])) - 1:
+            dst_intf = node["forwarding"][0]["dstIntList"][0]["int"]
+            dst_node = node.get("hostname")
+            endpoints["dst"] = f"{dst_intf} - {dst_node}"
+    return endpoints
+
+
 class IpFabric:
     """IpFabric will contain all the necessary API methods."""
 
@@ -42,8 +118,7 @@ class IpFabric:
 
     def get_response(self, url, payload):
         """Post request and return response dict."""
-        response = requests.post(self.host_url + url, json=payload, headers=self.headers)
-        return response.json().get("data", {})
+        return self.get_response_json("GET", url, payload).get("data", {})
 
     def get_response_json(self, method, url, payload, params=None):
         """GET request and return response dict."""
@@ -90,7 +165,6 @@ class IpFabric:
         self, src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id
     ):  # pylint: disable=too-many-arguments
         """Return End to End Path Simulation."""
-        logger.debug("Received end-to-end path simulation request")
 
         params = {
             "source": src_ip,
@@ -102,6 +176,8 @@ class IpFabric:
             # "asymmetric": asymmetric,
             # "rpf": rpf,
         }
+        logger.debug("Received end-to-end path simulation request: ", params)
+
         # no payload required
         payload = {}
         return self.get_response_json("GET", "/api/v1/graph/end-to-end-path", payload, params)
@@ -258,44 +334,13 @@ def end_to_end_path(
     )
 
     # request simulation
-    response = ipfabric_api.get_path_simulation(src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id)
-    graph = response.get("graph", {})
-    nodes = {graph_node["id"]: graph_node for graph_node in graph.get("nodes", {})}
-    edges = {edge["id"]: edge for edge in graph.get("edges", {})}
+    path = path_simulation(src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id)
+    endpoints = get_src_dst_endpoint(src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id)
 
-    path = []
-    src_intf = ""
-    dst_intf = ""
-    src_node = ""
-    dst_node = ""
-    src_node_idx = 0
-    dst_node_idx = len(nodes) - 1
-
-    # ipfabric returns the source of the path as the last element in the nodes list
-    for idx, node in enumerate(graph.get("nodes", [])[::-1]):
-        edge_id = node["forwarding"][0]["dstIntList"][0]["id"]
-        edge = edges.get(edge_id)
-        if idx == src_node_idx:
-            src_intf = node["forwarding"][0]["srcIntList"][0]["int"]
-            src_node = node.get("hostname")
-        if idx == dst_node_idx:
-            dst_intf = node["forwarding"][0]["dstIntList"][0]["int"]
-            dst_node = node.get("hostname")
-            continue  # don't add to path as the edge for the penultimate node will contain the 'target' node
-        path.append(
-            (
-                idx + 1,
-                node.get("hostname"),
-                edge["slabel"],
-                edge["srcAddr"],
-                edge["dstAddr"],
-                edge["tlabel"],
-                nodes.get(edge["target"], {}).get("hostname"),
-            )
-        )
+    ## make function for src and dest
     dispatcher.send_markdown(
-        f"{dispatcher.bold('Source: ')} {src_ip} [{src_intf} - {src_node}]\n"
-        f"{dispatcher.bold('Destination: ')} {dst_ip} [{dst_intf} - {dst_node}]\n"
+        f"{dispatcher.bold('Source: ')} {src_ip} [{endpoints.get('src')}]\n"
+        f"{dispatcher.bold('Destination: ')} {dst_ip} [{endpoints.get('dst')}]\n"
     )
     dispatcher.send_large_table(
         ["Hop", "Src Host", "Src Intf", "Src IP", "Dst IP", "Dst Intf", "Dst Host"],
