@@ -73,6 +73,21 @@ class IpFabric:
 
         return self.get_response("/api/v1/tables/interfaces/load", payload)
 
+    def get_interfaces_errors_info(self, device):
+        """Return bi-directional interface errors info."""
+        logger.debug("Received interface error counters request")
+
+        # columns and snapshot required
+        payload = {
+            "columns": ["intName", "errPktsPct", "errRate"],
+            "filters": {"hostname": ["eq", device]},
+            "pagination": {"limit": 48, "start": 0},
+            "snapshot": "$last",
+            "sort": {"order": "desc", "column": "intName"},
+        }
+
+        return self.get_response("/api/v1/tables/interfaces/errors/bidirectional", payload)
+
     def get_bgp_neighbors(self, device, state):
         """Retrieve BGP neighbors in IP Fabric for a specific device."""
         logger.debug("Received BGP neighbor request")
@@ -142,6 +157,44 @@ def get_int_load(dispatcher, device=None):
                 interface["intName"],
                 interface["inBytes"],
                 interface["outBytes"],
+            )
+            for interface in interfaces
+        ],
+    )
+
+    return True
+
+
+@subcommand_of("ipfabric")
+def get_int_errors(dispatcher, device=None):
+    """Get interfaces errors per device '/ipfabric get-int-load $device'."""
+    if not device:
+        prompt_device_input("ipfchip get-int-errors", "Which device are you interested in", dispatcher)
+        return False
+
+    dispatcher.send_markdown(f"Load in interfaces for {device}.")
+    interfaces = ipfabric_api.get_interfaces_errors_info(device)
+
+    dispatcher.send_blocks(
+        [
+            *dispatcher.command_response_header(
+                "ipfabric",
+                "get-int-errors",
+                [],
+                "Interfaces Current Error Data",
+                ipfabric_logo(dispatcher),
+            ),
+            dispatcher.markdown_block(f"{ipfabric_api.host_url}/technology/interfaces/error-rates/bidirectional"),
+        ]
+    )
+
+    dispatcher.send_large_table(
+        ["IntName", "Error %", "Error Rate"],
+        [
+            (
+                interface["intName"],
+                interface["errPktsPct"],
+                interface["errRate"],
             )
             for interface in interfaces
         ],
