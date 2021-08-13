@@ -14,12 +14,12 @@ class IpFabric:
         self.headers = {"Accept": "application/json", "Content-Type": "application/json", "X-API-Token": token}
         self.host_url = host_url
 
-    def get_response(self, url, payload):
-        """Post request and return response dict."""
-        return self.get_response_json("GET", url, payload).get("data", {})
+    def get_response(self, url, payload, method="POST"):
+        """Get request and return response dict."""
+        return self.get_response_json(method, url, payload).get("data", {})
 
     def get_response_json(self, method, url, payload, params=None):
-        """GET request and return response dict."""
+        """Get request and return response dict."""
         response = requests.request(method, self.host_url + url, json=payload, params=params, headers=self.headers)
         return response.json()
 
