@@ -182,7 +182,6 @@ def get_int_load(dispatcher, device=None):
 
 
 @subcommand_of("ipfabric")
-
 def get_int_errors(dispatcher, device=None):
     """Get interfaces errors per device '/ipfabric get-int-load $device'."""
     if not device:
@@ -219,7 +218,7 @@ def get_int_errors(dispatcher, device=None):
 
     return True
     
-    
+@subcommand_of("ipfabric")
 def get_int_drops(dispatcher, device=None):
     """Get bi-directional interfaces drops per device '/ipfabric get-int-drops $device'."""
     if not device:
