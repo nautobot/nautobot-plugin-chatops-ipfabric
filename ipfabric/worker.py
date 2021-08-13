@@ -73,6 +73,21 @@ class IpFabric:
 
         return self.get_response("/api/v1/tables/interfaces/load", payload)
 
+    def get_interfaces_drops_info(self, device):
+        """Return interface drops info."""
+        logger.debug("Received interface drop counters request")
+
+        # columns and snapshot required
+        payload = {
+            "columns": ["intName", "dropsPktsPct", "dropsRate"],
+            "filters": {"hostname": ["eq", device]},
+            "pagination": {"limit": 48, "start": 0},
+            "snapshot": "$last",
+            "sort": {"order": "desc", "column": "intName"},
+        }
+
+        return self.get_response("/api/v1/tables/interfaces/drops/bidirectional", payload)
+
     def get_bgp_neighbors(self, device, state):
         """Retrieve BGP neighbors in IP Fabric for a specific device."""
         logger.debug("Received BGP neighbor request")
@@ -142,6 +157,44 @@ def get_int_load(dispatcher, device=None):
                 interface["intName"],
                 interface["inBytes"],
                 interface["outBytes"],
+            )
+            for interface in interfaces
+        ],
+    )
+
+    return True
+
+
+@subcommand_of("ipfabric")
+def get_int_drops(dispatcher, device=None):
+    """Get bi-directional interfaces drops per device '/ipfabric get-int-drops $device'."""
+    if not device:
+        prompt_device_input("ipfabric get-int-drops", "Which device are you interested in", dispatcher)
+        return False
+
+    dispatcher.send_markdown(f"Load in interfaces for {device}.")
+    interfaces = ipfabric_api.get_interfaces_drops_info(device)
+
+    dispatcher.send_blocks(
+        [
+            *dispatcher.command_response_header(
+                "ipfabric",
+                "get-int-drops",
+                [],
+                "Interfaces Average Drop Data",
+                ipfabric_logo(dispatcher),
+            ),
+            dispatcher.markdown_block(f"{ipfabric_api.host_url}/technology/interfaces/drop-rates/bidirectional"),
+        ]
+    )
+
+    dispatcher.send_large_table(
+        ["IntName", "% Drops", "Drop Rate"],
+        [
+            (
+                interface["intName"],
+                interface["dropsPktsPct"],
+                interface["dropsRate"],
             )
             for interface in interfaces
         ],
