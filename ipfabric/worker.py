@@ -56,7 +56,7 @@ def path_simulation(src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id): 
     for idx, node in enumerate(graph.get("nodes", [])[::-1]):
         edge_id = node["forwarding"][0]["dstIntList"][0]["id"]
         edge = edges.get(edge_id)
-        if idx == len(nodes) - 1:
+        if not edge or idx == len(nodes) - 1:
             continue  # don't add to path as the edge for the penultimate node will contain the 'target' node
         path.append(
             (
