@@ -399,15 +399,15 @@ def get_bgp_neighbors(dispatcher, device=None, state=None):
     dispatcher.send_large_table(
         [
             "hostname",
-            "localAs",
-            "srcInt",
-            "localAddress",
+            "local As",
+            "src Int",
+            "local Address",
             "vrf",
-            "neiHostname",
-            "neiAddress",
-            "neiAs",
+            "nei Hostname",
+            "nei Address",
+            "nei As",
             "state",
-            "totalReceivedPrefixes",
+            "total Received Prefixes",
         ],
         [
             (
