@@ -73,7 +73,6 @@ class IpFabric:
 
         return self.get_response("/api/v1/tables/interfaces/load", payload)
 
-
     def get_interfaces_errors_info(self, device):
         """Return bi-directional interface errors info."""
         logger.debug("Received interface error counters request")
@@ -86,9 +85,9 @@ class IpFabric:
             "snapshot": "$last",
             "sort": {"order": "desc", "column": "intName"},
         }
-        
+
         return self.get_response("/api/v1/tables/interfaces/errors/bidirectional", payload)
-          
+
     def get_interfaces_drops_info(self, device):
         """Return interface drops info."""
         logger.debug("Received interface drop counters request")
@@ -217,7 +216,8 @@ def get_int_errors(dispatcher, device=None):
     )
 
     return True
-    
+
+
 @subcommand_of("ipfabric")
 def get_int_drops(dispatcher, device=None):
     """Get bi-directional interfaces drops per device '/ipfabric get-int-drops $device'."""
@@ -227,7 +227,6 @@ def get_int_drops(dispatcher, device=None):
 
     dispatcher.send_markdown(f"Load in interfaces for {device}.")
     interfaces = ipfabric_api.get_interfaces_drops_info(device)
-
 
     dispatcher.send_blocks(
         [
