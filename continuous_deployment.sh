@@ -18,7 +18,7 @@ echo "INFO: Connecting via SSH to ${TARGET_HOST_IP}"
 ssh -t -o StrictHostKeyChecking=no root@"${TARGET_HOST_IP}" -i  /tmp/instance-ssh-key << EOF
     cd /opt/chatbot-ipfabric
     git checkout develop
-    git reset --hard origin/develop
+    git pull
     poetry install
     poetry run inv build && poetry run inv stop && poetry run inv start
 EOF
