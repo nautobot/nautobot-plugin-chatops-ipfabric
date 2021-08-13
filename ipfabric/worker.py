@@ -183,6 +183,61 @@ class IpFabric:
         payload = {}
         return self.get_response_json("GET", "/api/v1/graph/end-to-end-path", payload, params)
 
+    def get_interfaces_errors_info(self, device):
+        """Return bi-directional interface errors info."""
+        logger.debug("Received interface error counters request")
+
+        # columns and snapshot required
+        payload = {
+            "columns": ["intName", "errPktsPct", "errRate"],
+            "filters": {"hostname": ["eq", device]},
+            "pagination": {"limit": 48, "start": 0},
+            "snapshot": "$last",
+            "sort": {"order": "desc", "column": "intName"},
+        }
+
+        return self.get_response("/api/v1/tables/interfaces/errors/bidirectional", payload)
+
+    def get_interfaces_drops_info(self, device):
+        """Return interface drops info."""
+        logger.debug("Received interface drop counters request")
+
+        # columns and snapshot required
+        payload = {
+            "columns": ["intName", "dropsPktsPct", "dropsRate"],
+            "filters": {"hostname": ["eq", device]},
+            "pagination": {"limit": 48, "start": 0},
+            "snapshot": "$last",
+            "sort": {"order": "desc", "column": "intName"},
+        }
+
+        return self.get_response("/api/v1/tables/interfaces/drops/bidirectional", payload)
+
+    def get_bgp_neighbors(self, device, state):
+        """Retrieve BGP neighbors in IP Fabric for a specific device."""
+        logger.debug("Received BGP neighbor request")
+
+        payload = {
+            "columns": [
+                "hostname",
+                "localAs",
+                "srcInt",
+                "localAddress",
+                "vrf",
+                "neiHostname",
+                "neiAddress",
+                "neiAs",
+                "state",
+                "totalReceivedPrefixes",
+            ],
+            "snapshot": "$last",
+            "filters": {"hostname": ["eq", device]},
+        }
+
+        if state != "any":
+            payload["filters"] = {"and": [{"hostname": ["eq", device]}, {"state": ["eq", state]}]}
+        return self.get_response("/api/v1/tables/routing/protocols/bgp/neighbors", payload)
+
 
 ipfabric_api = IpFabric(
     host_url=settings.PLUGINS_CONFIG["ipfabric"].get("IPFABRIC_HOST"),
@@ -227,6 +282,82 @@ def get_int_load(dispatcher, device=None):
                 interface["intName"],
                 interface["inBytes"],
                 interface["outBytes"],
+            )
+            for interface in interfaces
+        ],
+    )
+
+    return True
+
+
+@subcommand_of("ipfabric")
+def get_int_errors(dispatcher, device=None):
+    """Get interfaces errors per device '/ipfabric get-int-load $device'."""
+    if not device:
+        prompt_device_input("ipfchip get-int-errors", "Which device are you interested in", dispatcher)
+        return False
+
+    dispatcher.send_markdown(f"Load in interfaces for {device}.")
+    interfaces = ipfabric_api.get_interfaces_errors_info(device)
+
+    dispatcher.send_blocks(
+        [
+            *dispatcher.command_response_header(
+                "ipfabric",
+                "get-int-errors",
+                [],
+                "Interfaces Current Error Data",
+                ipfabric_logo(dispatcher),
+            ),
+            dispatcher.markdown_block(f"{ipfabric_api.host_url}/technology/interfaces/error-rates/bidirectional"),
+        ]
+    )
+
+    dispatcher.send_large_table(
+        ["IntName", "Error %", "Error Rate"],
+        [
+            (
+                interface["intName"],
+                interface["errPktsPct"],
+                interface["errRate"],
+            )
+            for interface in interfaces
+        ],
+    )
+
+    return True
+
+
+@subcommand_of("ipfabric")
+def get_int_drops(dispatcher, device=None):
+    """Get bi-directional interfaces drops per device '/ipfabric get-int-drops $device'."""
+    if not device:
+        prompt_device_input("ipfabric get-int-drops", "Which device are you interested in", dispatcher)
+        return False
+
+    dispatcher.send_markdown(f"Load in interfaces for {device}.")
+    interfaces = ipfabric_api.get_interfaces_drops_info(device)
+
+    dispatcher.send_blocks(
+        [
+            *dispatcher.command_response_header(
+                "ipfabric",
+                "get-int-drops",
+                [],
+                "Interfaces Average Drop Data",
+                ipfabric_logo(dispatcher),
+            ),
+            dispatcher.markdown_block(f"{ipfabric_api.host_url}/technology/interfaces/drop-rates/bidirectional"),
+        ]
+    )
+
+    dispatcher.send_large_table(
+        ["IntName", "% Drops", "Drop Rate"],
+        [
+            (
+                interface["intName"],
+                interface["dropsPktsPct"],
+                interface["dropsRate"],
             )
             for interface in interfaces
         ],
@@ -345,6 +476,83 @@ def end_to_end_path(
     dispatcher.send_large_table(
         ["Hop", "Src Host", "Src Intf", "Src IP", "Dst IP", "Dst Intf", "Dst Host"],
         path,
+    )
+
+    return True
+
+
+@subcommand_of("ipfabric")
+def get_bgp_neighbors(dispatcher, device=None, state=None):
+    """Get BGP neighbors by device."""
+    if not device:
+        prompt_device_input("ipfabric get-bgp-neighbors", "Which device are you interested in", dispatcher)
+        return False
+
+    if not state:
+        dispatcher.prompt_from_menu(
+            f"ipfabric get-bgp-neighbors {device}",
+            "BGP peer state",
+            [
+                ("Any", "any"),
+                ("Established", "established"),
+                ("Idle", "idle"),
+                ("Active", "active"),
+                ("Openconfirm", "openconfirm"),
+                ("Opensent", "opensent"),
+                ("Connect", "connect"),
+            ],
+            default=("Any", "any"),
+        )
+        return False
+
+    devices = [device["hostname"] for device in ipfabric_api.get_devices_info()]
+    if device not in devices:
+        dispatcher.send_markdown(f"Device *{device}* does not exist in IP Fabric.")
+        return False
+
+    bgp_neighbors = ipfabric_api.get_bgp_neighbors(device, state)
+
+    dispatcher.send_blocks(
+        [
+            *dispatcher.command_response_header(
+                "ipfabric",
+                "get-bgp-neighbors",
+                [("Device", device), ("State", state)],
+                "BGP neighbor data",
+                ipfabric_logo(dispatcher),
+            ),
+            dispatcher.markdown_block(f"{ipfabric_api.host_url}/technology/routing/bgp/neighbors"),
+        ]
+    )
+
+    dispatcher.send_large_table(
+        [
+            "hostname",
+            "localAs",
+            "srcInt",
+            "localAddress",
+            "vrf",
+            "neiHostname",
+            "neiAddress",
+            "neiAs",
+            "state",
+            "totalReceivedPrefixes",
+        ],
+        [
+            (
+                neighbor["hostname"],
+                neighbor["localAs"],
+                neighbor["srcInt"],
+                neighbor["localAddress"],
+                neighbor["vrf"],
+                neighbor["neiHostname"],
+                neighbor["neiAddress"],
+                neighbor["neiAs"],
+                neighbor["state"],
+                neighbor["totalReceivedPrefixes"],
+            )
+            for neighbor in bgp_neighbors
+        ],
     )
 
     return True
