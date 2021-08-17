@@ -23,7 +23,7 @@ class IpFabric:
         response = requests.request(method, self.host_url + url, json=payload, params=params, headers=self.headers)
         return response.json()
 
-    def get_devices_info(self):
+    def get_devices_info(self, snapshot_id="$last"):
         """Return Device info."""
         logger.debug("Received device list request")
 
@@ -32,11 +32,11 @@ class IpFabric:
             "columns": ["hostname", "siteName", "vendor", "platform", "model"],
             "filters": {},
             "pagination": {"limit": 15, "start": 0},
-            "snapshot": "$last",
+            "snapshot": snapshot_id,
         }
         return self.get_response("/api/v1/tables/inventory/devices", payload)
 
-    def get_interfaces_load_info(self, device):
+    def get_interfaces_load_info(self, device, snapshot_id="$last"):
         """Return Interface load info."""
         logger.debug("Received interface counters request")
 
@@ -45,7 +45,7 @@ class IpFabric:
             "columns": ["intName", "inBytes", "outBytes"],
             "filters": {"hostname": ["eq", device]},
             "pagination": {"limit": 48, "start": 0},
-            "snapshot": "$last",
+            "snapshot": snapshot_id,
             "sort": {"order": "desc", "column": "intName"},
         }
 
@@ -79,7 +79,7 @@ class IpFabric:
         payload = {}
         return self.get_response_json("GET", "/api/v1/graph/end-to-end-path", payload, params)
 
-    def get_interfaces_errors_info(self, device):
+    def get_interfaces_errors_info(self, device, snapshot_id="$last"):
         """Return bi-directional interface errors info."""
         logger.debug("Received interface error counters request")
 
@@ -88,13 +88,13 @@ class IpFabric:
             "columns": ["intName", "errPktsPct", "errRate"],
             "filters": {"hostname": ["eq", device]},
             "pagination": {"limit": 48, "start": 0},
-            "snapshot": "$last",
+            "snapshot": snapshot_id,
             "sort": {"order": "desc", "column": "intName"},
         }
 
         return self.get_response("/api/v1/tables/interfaces/errors/bidirectional", payload)
 
-    def get_interfaces_drops_info(self, device):
+    def get_interfaces_drops_info(self, device, snapshot_id="$last"):
         """Return interface drops info."""
         logger.debug("Received interface drop counters request")
 
@@ -103,7 +103,7 @@ class IpFabric:
             "columns": ["intName", "dropsPktsPct", "dropsRate"],
             "filters": {"hostname": ["eq", device]},
             "pagination": {"limit": 48, "start": 0},
-            "snapshot": "$last",
+            "snapshot": snapshot_id,
             "sort": {"order": "desc", "column": "intName"},
         }
 
