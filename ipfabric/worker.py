@@ -212,7 +212,7 @@ def get_int_errors(dispatcher, device, snapshot_id):
         [
             *dispatcher.command_response_header(
                 "ipfabric",
-                "interfaces errors",
+                "interfaces",
                 [("Snapshot", snapshot_id), ("Device", device), ("Metric", "errors")],
                 "interface error data",
                 ipfabric_logo(dispatcher),
@@ -245,7 +245,7 @@ def get_int_drops(dispatcher, device, snapshot_id):
         [
             *dispatcher.command_response_header(
                 "ipfabric",
-                "interfaces drops",
+                "interfaces",
                 [("Snapshot", snapshot_id), ("Device", device), ("Metric", "drops")],
                 "interface average drop data",
                 ipfabric_logo(dispatcher),
