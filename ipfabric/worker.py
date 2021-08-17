@@ -165,7 +165,7 @@ def get_int_load(dispatcher, device=None):
 def get_int_errors(dispatcher, device=None):
     """Get interfaces errors per device '/ipfabric get-int-load $device'."""
     if not device:
-        prompt_device_input("ipfchip get-int-errors", "Which device are you interested in", dispatcher)
+        prompt_device_input("ipfabric get-int-errors", "Which device are you interested in", dispatcher)
         return False
 
     dispatcher.send_markdown(f"Load in interfaces for {device}.")
