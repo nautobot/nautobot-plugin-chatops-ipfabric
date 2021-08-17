@@ -7,6 +7,7 @@ from nautobot_chatops.choices import CommandStatusChoices
 from nautobot_chatops.workers import subcommand_of, handle_subcommands
 from .ipfabric import IpFabric
 
+BASE_CMD = "ipfabric"
 IPFABRIC_LOGO_PATH = "ipfabric/ipfabric_logo.png"
 IPFABRIC_LOGO_ALT = "IPFabric Logo"
 
@@ -123,23 +124,64 @@ def prompt_device_input(action_id, help_text, dispatcher, choices=None):
     return False
 
 
+def prompt_snapshot_id(action_id, help_text, dispatcher, choices=None):
+    """Prompt the user for snapshot ID."""
+    snapshots = list()
+    for snapshot in ipfabric_api.get_snapshots():
+        if snapshot["state"] == "loaded":
+            snapshot_id = snapshot["id"]
+            snapshot_name = snapshot["name"] or snapshot_id
+            snapshots.append((snapshot_name, snapshot_id))
+    choices = snapshots + [("$last", "$last")]
+    return dispatcher.prompt_from_menu(action_id, help_text, choices, default=("$last", "$last"))
+
+
 @subcommand_of("ipfabric")
-def get_int_load(dispatcher, device=None):
-    """Get interfaces load per device '/ipfabric get-int-load $device'."""
-    if not device:
-        prompt_device_input("ipfabric get-int-load", "Which device are you interested in", dispatcher)
+def interfaces(dispatcher, snapshot_id=None, device=None, metric=None):
+    """Get interface metrics for a device."""
+    if not snapshot_id:
+        snapshot_id = prompt_snapshot_id(f"{BASE_CMD} interfaces", "Select a snapshot ID", dispatcher)
         return False
+    logger.debug("Getting devices")
+    devices = [
+        (device["hostname"], device["hostname"].lower()) for device in ipfabric_api.get_devices_info(snapshot_id)
+    ]
 
+    dialog_list = [
+        {
+            "type": "select",
+            "label": "Device",
+            "choices": devices,
+            "default": devices[0],
+        },
+        {
+            "type": "select",
+            "label": "Metric",
+            "choices": [("Load", "load"), ("Errors", "errors"), ("Drops", "drops")],
+            "default": ("Load", "load"),
+        },
+    ]
+
+    if not all([metric, device]):
+        dispatcher.multi_input_dialog(f"{BASE_CMD}", f"interfaces {snapshot_id}", "Interface Metrics", dialog_list)
+        return CommandStatusChoices.STATUS_SUCCEEDED
+
+    cmd_map = {"load": get_int_load, "errors": get_int_errors, "drops": get_int_drops}
+    print(metric)
+    cmd_map[metric](dispatcher, device, snapshot_id)
+
+
+def get_int_load(dispatcher, device, snapshot_id):
+    """Get interface load per device."""
     dispatcher.send_markdown(f"Load in interfaces for {device}.")
-    interfaces = ipfabric_api.get_interfaces_load_info(device)
-
+    interfaces = ipfabric_api.get_interfaces_load_info(device, snapshot_id)
     dispatcher.send_blocks(
         [
             *dispatcher.command_response_header(
                 "ipfabric",
-                "get-int-load",
-                [],
-                "Interfaces Current Data",
+                "interfaces",
+                [("Snapshot", snapshot_id), ("Device", device), ("Metric", "load")],
+                "interface load data",
                 ipfabric_logo(dispatcher),
             ),
             dispatcher.markdown_block(f"{ipfabric_api.host_url}/technology/interfaces/rate/inbound"),
@@ -161,23 +203,18 @@ def get_int_load(dispatcher, device=None):
     return True
 
 
-@subcommand_of("ipfabric")
-def get_int_errors(dispatcher, device=None):
-    """Get interfaces errors per device '/ipfabric get-int-load $device'."""
-    if not device:
-        prompt_device_input("ipfabric get-int-errors", "Which device are you interested in", dispatcher)
-        return False
-
+def get_int_errors(dispatcher, device, snapshot_id):
+    """Get interface errors per device."""
     dispatcher.send_markdown(f"Load in interfaces for {device}.")
-    interfaces = ipfabric_api.get_interfaces_errors_info(device)
+    interfaces = ipfabric_api.get_interfaces_errors_info(device, snapshot_id)
 
     dispatcher.send_blocks(
         [
             *dispatcher.command_response_header(
                 "ipfabric",
-                "get-int-errors",
-                [],
-                "Interfaces Current Error Data",
+                "interfaces errors",
+                [("Snapshot", snapshot_id), ("Device", device), ("Metric", "errors")],
+                "interface error data",
                 ipfabric_logo(dispatcher),
             ),
             dispatcher.markdown_block(f"{ipfabric_api.host_url}/technology/interfaces/error-rates/bidirectional"),
@@ -199,23 +236,18 @@ def get_int_errors(dispatcher, device=None):
     return True
 
 
-@subcommand_of("ipfabric")
-def get_int_drops(dispatcher, device=None):
-    """Get bi-directional interfaces drops per device '/ipfabric get-int-drops $device'."""
-    if not device:
-        prompt_device_input("ipfabric get-int-drops", "Which device are you interested in", dispatcher)
-        return False
-
+def get_int_drops(dispatcher, device, snapshot_id):
+    """Get bi-directional interface drops per device."""
     dispatcher.send_markdown(f"Load in interfaces for {device}.")
-    interfaces = ipfabric_api.get_interfaces_drops_info(device)
+    interfaces = ipfabric_api.get_interfaces_drops_info(device, snapshot_id)
 
     dispatcher.send_blocks(
         [
             *dispatcher.command_response_header(
                 "ipfabric",
-                "get-int-drops",
-                [],
-                "Interfaces Average Drop Data",
+                "interfaces drops",
+                [("Snapshot", snapshot_id), ("Device", device), ("Metric", "drops")],
+                "interface average drop data",
                 ipfabric_logo(dispatcher),
             ),
             dispatcher.markdown_block(f"{ipfabric_api.host_url}/technology/interfaces/drop-rates/bidirectional"),
