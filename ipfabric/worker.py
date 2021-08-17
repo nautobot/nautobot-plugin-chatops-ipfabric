@@ -169,12 +169,13 @@ def interfaces(dispatcher, snapshot_id=None, device=None, metric=None):
     cmd_map = {"load": get_int_load, "errors": get_int_errors, "drops": get_int_drops}
     print(metric)
     cmd_map[metric](dispatcher, device, snapshot_id)
+    return True
 
 
 def get_int_load(dispatcher, device, snapshot_id):
     """Get interface load per device."""
     dispatcher.send_markdown(f"Load in interfaces for {device}.")
-    interfaces = ipfabric_api.get_interfaces_load_info(device, snapshot_id)
+    int_load = ipfabric_api.get_interfaces_load_info(device, snapshot_id)
     dispatcher.send_blocks(
         [
             *dispatcher.command_response_header(
@@ -196,7 +197,7 @@ def get_int_load(dispatcher, device, snapshot_id):
                 interface["inBytes"],
                 interface["outBytes"],
             )
-            for interface in interfaces
+            for interface in int_load
         ],
     )
 
@@ -206,7 +207,7 @@ def get_int_load(dispatcher, device, snapshot_id):
 def get_int_errors(dispatcher, device, snapshot_id):
     """Get interface errors per device."""
     dispatcher.send_markdown(f"Load in interfaces for {device}.")
-    interfaces = ipfabric_api.get_interfaces_errors_info(device, snapshot_id)
+    int_errors = ipfabric_api.get_interfaces_errors_info(device, snapshot_id)
 
     dispatcher.send_blocks(
         [
@@ -229,7 +230,7 @@ def get_int_errors(dispatcher, device, snapshot_id):
                 interface["errPktsPct"],
                 interface["errRate"],
             )
-            for interface in interfaces
+            for interface in int_errors
         ],
     )
 
@@ -239,7 +240,7 @@ def get_int_errors(dispatcher, device, snapshot_id):
 def get_int_drops(dispatcher, device, snapshot_id):
     """Get bi-directional interface drops per device."""
     dispatcher.send_markdown(f"Load in interfaces for {device}.")
-    interfaces = ipfabric_api.get_interfaces_drops_info(device, snapshot_id)
+    int_drops = ipfabric_api.get_interfaces_drops_info(device, snapshot_id)
 
     dispatcher.send_blocks(
         [
@@ -262,7 +263,7 @@ def get_int_drops(dispatcher, device, snapshot_id):
                 interface["dropsPktsPct"],
                 interface["dropsRate"],
             )
-            for interface in interfaces
+            for interface in int_drops
         ],
     )
 
