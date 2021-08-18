@@ -167,7 +167,6 @@ def interfaces(dispatcher, snapshot_id=None, device=None, metric=None):
         return CommandStatusChoices.STATUS_SUCCEEDED
 
     cmd_map = {"load": get_int_load, "errors": get_int_errors, "drops": get_int_drops}
-    print(metric)
     cmd_map[metric](dispatcher, device, snapshot_id)
     return True
 
