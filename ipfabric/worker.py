@@ -6,6 +6,7 @@ from django_rq import job
 from nautobot_chatops.choices import CommandStatusChoices
 from nautobot_chatops.workers import subcommand_of, handle_subcommands
 from .ipfabric import IpFabric
+from .models import IpFabricChatopsContext
 
 IPFABRIC_LOGO_PATH = "ipfabric/ipfabric_logo.png"
 IPFABRIC_LOGO_ALT = "IPFabric Logo"
@@ -28,6 +29,13 @@ def prompt_hello_input(action_id, help_text, dispatcher, choices=None):
     """Prompt the user for input."""
     welcome_choices = ["Hi", "Hello", "Hola", "Ciao"]
     choices = [(welcome, welcome.lower()) for welcome in welcome_choices]
+    dispatcher.prompt_from_menu(action_id, help_text, choices)
+    return False
+
+
+def prompt_snapshot(action_id, help_text, dispatcher, choices=None):
+    """Prompt the user for snapshot input."""
+    choices = [(snapshot.get("id", ""), snapshot.get("id", "")) for snapshot in ipfabric_api.get_snapshots()]
     dispatcher.prompt_from_menu(action_id, help_text, choices)
     return False
 
@@ -246,6 +254,41 @@ def hello_world(dispatcher, arg1=None):
 
     logger.debug("Received arg1 %s", arg1)
     dispatcher.send_markdown(f"Just wanted to say {arg1}")
+    return True
+
+
+@subcommand_of("ipfabric")
+def set_snapshot(dispatcher, snapshot=None):
+    """Set snapshot as reference for commands."""
+    if not snapshot:
+        prompt_snapshot("ipfabric set-snapshot", "What snapshot are you interested in?", dispatcher)
+        return False
+
+    snapshots = [(snapshot.get("id", ""), snapshot.get("id", "")) for snapshot in ipfabric_api.get_snapshots()]
+    if snapshot not in snapshots:
+        dispatcher.send_markdown(f"Snapshot *{snapshot}* does not exist in IP Fabric.")
+        return False
+
+    context = IpFabricChatopsContext.objects.first()
+    if not context:
+        context = IpFabricChatopsContext.objects.create(snapshot=snapshot)
+    else:
+        context.snapshot = snapshot
+        IpFabricChatopsContext.save()
+
+    dispatcher.send_markdown(f"Snapshot *{snapshot}* is now used as the default for the subsequent commands.")
+    return True
+
+
+@subcommand_of("ipfabric")
+def get_snapshot(dispatcher, snapshot=None):
+    """Get snapshot as reference for commands."""
+    context = IpFabricChatopsContext.objects.first()
+    if not context or not context.snapshot:
+        dispatcher.send_markdown("No snapshot not defined yet. Use 'ipfabric set-snapshot' to define one.")
+    else:
+        dispatcher.send_markdown(f"Snapshot *{context.snapshot}* is defined.")
+
     return True
 
 
