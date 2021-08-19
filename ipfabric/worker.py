@@ -6,7 +6,6 @@ from django_rq import job
 from nautobot_chatops.choices import CommandStatusChoices
 from nautobot_chatops.workers import subcommand_of, handle_subcommands
 from .ipfabric import IpFabric
-from .models import IpFabricChatopsContext
 
 IPFABRIC_LOGO_PATH = "ipfabric/ipfabric_logo.png"
 IPFABRIC_LOGO_ALT = "IPFabric Logo"
@@ -269,12 +268,8 @@ def set_snapshot(dispatcher, snapshot=None):
         dispatcher.send_markdown(f"Snapshot *{snapshot}* does not exist in IP Fabric.")
         return False
 
-    context = IpFabricChatopsContext.objects.first()
-    if not context:
-        context = IpFabricChatopsContext.objects.create(snapshot=snapshot)
-    else:
-        context.snapshot = snapshot
-        context.save()
+    ipfabric.context.snapshot = snapshot
+    ipfabric.context.save()
 
     dispatcher.send_markdown(f"Snapshot *{snapshot}* is now used as the default for the subsequent commands.")
     return True
@@ -283,11 +278,10 @@ def set_snapshot(dispatcher, snapshot=None):
 @subcommand_of("ipfabric")
 def get_snapshot(dispatcher):
     """Get snapshot as reference for commands."""
-    context = IpFabricChatopsContext.objects.first()
-    if not context or not context.snapshot:
+    if ipfabric.context.snapshot:
         dispatcher.send_markdown("No snapshot not defined yet. Use 'ipfabric set-snapshot' to define one.")
     else:
-        dispatcher.send_markdown(f"Snapshot *{context.snapshot}* is defined.")
+        dispatcher.send_markdown(f"Snapshot *{ipfabric.context.snapshot}* is defined.")
 
     return True
 

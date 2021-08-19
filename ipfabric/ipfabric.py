@@ -2,6 +2,8 @@
 
 import logging
 import requests
+from .models import IpFabricChatopsContext
+
 
 logger = logging.getLogger("ipfabric")
 
@@ -13,6 +15,9 @@ class IpFabric:
         """Auth is contained in the 'X-API-Token' in the header."""
         self.headers = {"Accept": "application/json", "Content-Type": "application/json", "X-API-Token": token}
         self.host_url = host_url
+        self.context = IpFabricChatopsContext.objects.first()
+        if not self.context:
+            self.context = IpFabricChatopsContext.objects.create()
 
     def get_response(self, url, payload, method="POST"):
         """Get request and return response dict."""
@@ -32,7 +37,7 @@ class IpFabric:
             "columns": ["hostname", "siteName", "vendor", "platform", "model"],
             "filters": {},
             "pagination": {"limit": 15, "start": 0},
-            "snapshot": "$last",
+            "snapshot": self.context.snapshot or "$last",
         }
         return self.get_response("/api/v1/tables/inventory/devices", payload)
 
@@ -45,7 +50,7 @@ class IpFabric:
             "columns": ["intName", "inBytes", "outBytes"],
             "filters": {"hostname": ["eq", device]},
             "pagination": {"limit": 48, "start": 0},
-            "snapshot": "$last",
+            "snapshot": self.context.snapshot or "$last",
             "sort": {"order": "desc", "column": "intName"},
         }
 
@@ -60,7 +65,7 @@ class IpFabric:
         return self.get_response_json("GET", "/api/v1/snapshots", payload)
 
     def get_path_simulation(
-        self, src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id
+        self, src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id=None
     ):  # pylint: disable=too-many-arguments
         """Return End to End Path Simulation."""
         params = {
@@ -69,7 +74,7 @@ class IpFabric:
             "sourcePort": src_port,
             "destinationPort": dst_port,
             "protocol": protocol,
-            "snapshot": snapshot_id,
+            "snapshot": snapshot_id or self.context.snapshot,
             # "asymmetric": asymmetric,
             # "rpf": rpf,
         }
@@ -88,7 +93,7 @@ class IpFabric:
             "columns": ["intName", "errPktsPct", "errRate"],
             "filters": {"hostname": ["eq", device]},
             "pagination": {"limit": 48, "start": 0},
-            "snapshot": "$last",
+            "snapshot": self.context.snapshot or "$last",
             "sort": {"order": "desc", "column": "intName"},
         }
 
@@ -103,7 +108,7 @@ class IpFabric:
             "columns": ["intName", "dropsPktsPct", "dropsRate"],
             "filters": {"hostname": ["eq", device]},
             "pagination": {"limit": 48, "start": 0},
-            "snapshot": "$last",
+            "snapshot": self.context.snapshot or "$last",
             "sort": {"order": "desc", "column": "intName"},
         }
 
@@ -126,7 +131,7 @@ class IpFabric:
                 "state",
                 "totalReceivedPrefixes",
             ],
-            "snapshot": "$last",
+            "snapshot": self.context.snapshot or "$last",
             "filters": {"hostname": ["eq", device]},
         }
 
