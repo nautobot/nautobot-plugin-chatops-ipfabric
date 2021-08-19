@@ -274,14 +274,14 @@ def set_snapshot(dispatcher, snapshot=None):
         context = IpFabricChatopsContext.objects.create(snapshot=snapshot)
     else:
         context.snapshot = snapshot
-        IpFabricChatopsContext.save()
+        context.save()
 
     dispatcher.send_markdown(f"Snapshot *{snapshot}* is now used as the default for the subsequent commands.")
     return True
 
 
 @subcommand_of("ipfabric")
-def get_snapshot(dispatcher, snapshot=None):
+def get_snapshot(dispatcher):
     """Get snapshot as reference for commands."""
     context = IpFabricChatopsContext.objects.first()
     if not context or not context.snapshot:
