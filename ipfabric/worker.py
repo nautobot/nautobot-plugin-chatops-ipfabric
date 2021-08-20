@@ -157,7 +157,7 @@ def set_snapshot(dispatcher, snapshot=None):
 
     user = dispatcher.context["user_id"]
     snapshots = [snapshot.get("id", "") for snapshot in ipfabric_api.get_snapshots()]
-    if snapshot not in snapshots:
+    if snapshot not in snapshots and snapshot != "$last":
         dispatcher.send_markdown(f"<@{user}>, snapshot *{snapshot}* does not exist in IP Fabric.")
         return False
     set_context(user, {"snapshot": snapshot})
