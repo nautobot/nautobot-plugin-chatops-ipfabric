@@ -126,7 +126,6 @@ def prompt_device_input(action_id, help_text, dispatcher, choices=None):
 
 def get_user_snapshot(dispatcher):
     """Lookup user snapshot setting in cache."""
-
     context = get_context(dispatcher.context["user_id"])
     snapshot = context.get("snapshot")
     if not snapshot:
