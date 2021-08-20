@@ -219,7 +219,7 @@ def interfaces(dispatcher, device=None, metric=None):
 
 def get_int_load(dispatcher, device, snapshot_id):
     """Get interface load per device."""
-    dispatcher.send_markdown(f"Load in interfaces for {device}.")
+    dispatcher.send_markdown(f"Load in interfaces for *{device}* in snapshot *{snapshot_id}*.")
     int_load = ipfabric_api.get_interfaces_load_info(device, snapshot_id)
     dispatcher.send_blocks(
         [
@@ -251,7 +251,7 @@ def get_int_load(dispatcher, device, snapshot_id):
 
 def get_int_errors(dispatcher, device, snapshot_id):
     """Get interface errors per device."""
-    dispatcher.send_markdown(f"Load in interfaces for {device}.")
+    dispatcher.send_markdown(f"Load in interfaces for *{device}* in snapshot *{snapshot_id}*.")
     int_errors = ipfabric_api.get_interfaces_errors_info(device, snapshot_id)
 
     dispatcher.send_blocks(
@@ -284,7 +284,7 @@ def get_int_errors(dispatcher, device, snapshot_id):
 
 def get_int_drops(dispatcher, device, snapshot_id):
     """Get bi-directional interface drops per device."""
-    dispatcher.send_markdown(f"Load in interfaces for {device}.")
+    dispatcher.send_markdown(f"Load in interfaces for *{device}* in snapshot *{snapshot_id}*.")
     int_drops = ipfabric_api.get_interfaces_drops_info(device, snapshot_id)
 
     dispatcher.send_blocks(
