@@ -209,7 +209,7 @@ def interfaces(dispatcher, device=None, metric=None):
     ]
 
     if not all([metric, device]):
-        dispatcher.multi_input_dialog(f"{BASE_CMD}", f"interfaces", "Interface Metrics", dialog_list)
+        dispatcher.multi_input_dialog(f"{BASE_CMD}", "interfaces", "Interface Metrics", dialog_list)
         return CommandStatusChoices.STATUS_SUCCEEDED
 
     cmd_map = {"load": get_int_load, "errors": get_int_errors, "drops": get_int_drops}
