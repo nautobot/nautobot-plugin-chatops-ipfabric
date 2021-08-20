@@ -1,9 +1,10 @@
 """IPFabric API integration."""
 
 import logging
+import hashlib
 import requests
-from .models import IpFabricChatopsContext
-
+from django.core.cache import cache
+from . import IPFabricConfig
 
 logger = logging.getLogger("ipfabric")
 
@@ -15,9 +16,22 @@ class IpFabric:
         """Auth is contained in the 'X-API-Token' in the header."""
         self.headers = {"Accept": "application/json", "Content-Type": "application/json", "X-API-Token": token}
         self.host_url = host_url
-        self.context = IpFabricChatopsContext.objects.first()
-        if not self.context:
-            self.context = IpFabricChatopsContext.objects.create()
+        self._user = ""
+
+    def _get_cache_key(self):
+        """Key generator for the cache, adding the plugin prefix name."""
+        key_string = "-".join([IPFabricConfig.name, self._user])
+        return hashlib.md5(key_string.encode("utf-8")).hexdigest()  # nosec
+
+    @property
+    def context(self):
+        """Simply return the context stored for the user, that should be a dict."""
+        return cache.get(self._get_cache_key) or {}
+
+    @context.setter
+    def context(self, updated_context: dict):
+        """Simply update the context for the user."""
+        cache.set(self._get_cache_key(), {**self.context, **updated_context}, timeout=86400)
 
     def get_response(self, url, payload, method="POST"):
         """Get request and return response dict."""
@@ -37,7 +51,7 @@ class IpFabric:
             "columns": ["hostname", "siteName", "vendor", "platform", "model"],
             "filters": {},
             "pagination": {"limit": 15, "start": 0},
-            "snapshot": self.context.snapshot or "$last",
+            "snapshot": self.context.get("snapshot", "$last"),
         }
         return self.get_response("/api/v1/tables/inventory/devices", payload)
 
@@ -50,7 +64,7 @@ class IpFabric:
             "columns": ["intName", "inBytes", "outBytes"],
             "filters": {"hostname": ["eq", device]},
             "pagination": {"limit": 48, "start": 0},
-            "snapshot": self.context.snapshot or "$last",
+            "snapshot": self.context.get("snapshot", "$last"),
             "sort": {"order": "desc", "column": "intName"},
         }
 
@@ -74,7 +88,7 @@ class IpFabric:
             "sourcePort": src_port,
             "destinationPort": dst_port,
             "protocol": protocol,
-            "snapshot": snapshot_id or self.context.snapshot,
+            "snapshot": snapshot_id or self.context.get("snapshot"),
             # "asymmetric": asymmetric,
             # "rpf": rpf,
         }
@@ -93,7 +107,7 @@ class IpFabric:
             "columns": ["intName", "errPktsPct", "errRate"],
             "filters": {"hostname": ["eq", device]},
             "pagination": {"limit": 48, "start": 0},
-            "snapshot": self.context.snapshot or "$last",
+            "snapshot": self.context.get("snapshot", "$last"),
             "sort": {"order": "desc", "column": "intName"},
         }
 
@@ -108,7 +122,7 @@ class IpFabric:
             "columns": ["intName", "dropsPktsPct", "dropsRate"],
             "filters": {"hostname": ["eq", device]},
             "pagination": {"limit": 48, "start": 0},
-            "snapshot": self.context.snapshot or "$last",
+            "snapshot": self.context.get("snapshot", "$last"),
             "sort": {"order": "desc", "column": "intName"},
         }
 
@@ -131,7 +145,7 @@ class IpFabric:
                 "state",
                 "totalReceivedPrefixes",
             ],
-            "snapshot": self.context.snapshot or "$last",
+            "snapshot": self.context.get("snapshot", "$last"),
             "filters": {"hostname": ["eq", device]},
         }
 

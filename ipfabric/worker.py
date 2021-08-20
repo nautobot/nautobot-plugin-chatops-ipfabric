@@ -12,6 +12,11 @@ IPFABRIC_LOGO_ALT = "IPFabric Logo"
 
 logger = logging.getLogger("rq.worker")
 
+ipfabric_api = IpFabric(
+    host_url=settings.PLUGINS_CONFIG["ipfabric"].get("IPFABRIC_HOST"),
+    token=settings.PLUGINS_CONFIG["ipfabric"].get("IPFABRIC_API_TOKEN"),
+)
+
 
 def ipfabric_logo(dispatcher):
     """Construct an image_element containing the locally hosted IP Fabric logo."""
@@ -117,12 +122,6 @@ def get_src_dst_endpoint(
     return endpoints
 
 
-ipfabric_api = IpFabric(
-    host_url=settings.PLUGINS_CONFIG["ipfabric"].get("IPFABRIC_HOST"),
-    token=settings.PLUGINS_CONFIG["ipfabric"].get("IPFABRIC_API_TOKEN"),
-)
-
-
 def prompt_device_input(action_id, help_text, dispatcher, choices=None):
     """Prompt the user for input."""
     choices = [(device["hostname"], device["hostname"].lower()) for device in ipfabric_api.get_devices_info()]
@@ -133,6 +132,7 @@ def prompt_device_input(action_id, help_text, dispatcher, choices=None):
 @subcommand_of("ipfabric")
 def get_int_load(dispatcher, device=None):
     """Get interfaces load per device '/ipfabric get-int-load $device'."""
+    ipfabric.user = dispatcher.context["user_id"]
     if not device:
         prompt_device_input("ipfabric get-int-load", "Which device are you interested in", dispatcher)
         return False
@@ -171,6 +171,7 @@ def get_int_load(dispatcher, device=None):
 @subcommand_of("ipfabric")
 def get_int_errors(dispatcher, device=None):
     """Get interfaces errors per device '/ipfabric get-int-load $device'."""
+    ipfabric.user = dispatcher.context["user_id"]
     if not device:
         prompt_device_input("ipfabric get-int-errors", "Which device are you interested in", dispatcher)
         return False
@@ -259,6 +260,7 @@ def hello_world(dispatcher, arg1=None):
 @subcommand_of("ipfabric")
 def set_snapshot(dispatcher, snapshot=None):
     """Set snapshot as reference for commands."""
+    ipfabric.user = dispatcher.context["user_id"]
     if not snapshot:
         prompt_snapshot("ipfabric set-snapshot", "What snapshot are you interested in?", dispatcher)
         return False
@@ -268,8 +270,7 @@ def set_snapshot(dispatcher, snapshot=None):
         dispatcher.send_markdown(f"Snapshot *{snapshot}* does not exist in IP Fabric.")
         return False
 
-    ipfabric.context.snapshot = snapshot
-    ipfabric.context.save()
+    ipfabric.context(dispatcher.context["user_id"], {"snapshot": snapshot})
 
     dispatcher.send_markdown(f"Snapshot *{snapshot}* is now used as the default for the subsequent commands.")
     return True
@@ -278,10 +279,12 @@ def set_snapshot(dispatcher, snapshot=None):
 @subcommand_of("ipfabric")
 def get_snapshot(dispatcher):
     """Get snapshot as reference for commands."""
-    if ipfabric.context.snapshot:
-        dispatcher.send_markdown("No snapshot not defined yet. Use 'ipfabric set-snapshot' to define one.")
+    ipfabric.user = dispatcher.context["user_id"]
+    snapshot = ipfabric.context.get("snapshot")
+    if snapshot:
+        dispatcher.send_markdown(f"Snapshot *{snapshot}* is defined.")
     else:
-        dispatcher.send_markdown(f"Snapshot *{ipfabric.context.snapshot}* is defined.")
+        dispatcher.send_markdown("No snapshot not defined yet. Use 'ipfabric set-snapshot' to define one.")
 
     return True
 
@@ -319,6 +322,7 @@ def end_to_end_path(
     dispatcher, src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id
 ):  # pylint: disable=too-many-arguments, too-many-locals
     """Execute end-to-end path simulation between source and target IP address."""
+    ipfabric.user = dispatcher.context["user_id"]
     snapshots = [(snapshot.get("id", ""), snapshot.get("id", "")) for snapshot in ipfabric_api.get_snapshots()]
 
     logger.info("Snapshots %s", snapshots)
@@ -392,6 +396,7 @@ def end_to_end_path(
 @subcommand_of("ipfabric")
 def get_bgp_neighbors(dispatcher, device=None, state=None):
     """Get BGP neighbors by device."""
+    ipfabric.user = dispatcher.context["user_id"]
     if not device:
         prompt_device_input("ipfabric get-bgp-neighbors", "Which device are you interested in", dispatcher)
         return False
