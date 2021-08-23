@@ -172,7 +172,7 @@ def get_snapshot(dispatcher):
     """Get snapshot as reference for commands."""
     user = dispatcher.context["user_id"]
     context = get_context(user)
-    snapshot = context["snapshot"]
+    snapshot = context.get("snapshot")
     if snapshot:
         dispatcher.send_markdown(f"<@{user}>, your current snapshot is *{snapshot}*.")
     else:
