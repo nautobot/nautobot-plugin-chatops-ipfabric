@@ -430,15 +430,38 @@ def end_to_end_path(
 
 
 @subcommand_of("ipfabric")
-def get_bgp_neighbors(dispatcher, device=None, state=None):
-    """Get BGP neighbors by device."""
-    if not device:
-        prompt_device_input("ipfabric get-bgp-neighbors", "Which device are you interested in", dispatcher)
-        return False
+def routing(dispatcher, device=None, protocol=None, filter_opt=None):
+    """Get routing information for a device."""
+    snapshot_id = get_user_snapshot(dispatcher)
+    logger.debug("Getting devices")
+    devices = [
+        (device["hostname"], device["hostname"].lower()) for device in ipfabric_api.get_devices_info(snapshot_id)
+    ]
 
+    dialog_list = [
+        {
+            "type": "select",
+            "label": "Device",
+            "choices": devices,
+            "default": devices[0],
+        },
+        {"type": "select", "label": "Data type", "choices": [("BGP Neighbors", "bgp-neighbors")]},
+    ]
+
+    if not all([protocol, device]):
+        dispatcher.multi_input_dialog(f"{BASE_CMD}", "routing", "Routing Info", dialog_list)
+        return CommandStatusChoices.STATUS_SUCCEEDED
+
+    cmd_map = {"bgp-neighbors": get_bgp_neighbors}
+    cmd_map[protocol](dispatcher, device, snapshot_id, filter_opt)
+    return True
+
+
+def get_bgp_neighbors(dispatcher, device=None, snapshot_id=None, state=None):
+    """Get BGP neighbors by device."""
     if not state:
         dispatcher.prompt_from_menu(
-            f"ipfabric get-bgp-neighbors {device}",
+            f"{BASE_CMD} routing {device} bgp-neighbors",
             "BGP peer state",
             [
                 ("Any", "any"),
@@ -453,19 +476,14 @@ def get_bgp_neighbors(dispatcher, device=None, state=None):
         )
         return False
 
-    devices = [device["hostname"] for device in ipfabric_api.get_devices_info()]
-    if device not in devices:
-        dispatcher.send_markdown(f"Device *{device}* does not exist in IP Fabric.")
-        return False
-
-    bgp_neighbors = ipfabric_api.get_bgp_neighbors(device, state)
+    bgp_neighbors = ipfabric_api.get_bgp_neighbors(device, state, snapshot_id)
 
     dispatcher.send_blocks(
         [
             *dispatcher.command_response_header(
                 "ipfabric",
-                "get-bgp-neighbors",
-                [("Device", device), ("State", state)],
+                "routing",
+                [("Device", device), ("Protocol", "bgp-neighbors"), ("State", state)],
                 "BGP neighbor data",
                 ipfabric_logo(dispatcher),
             ),
