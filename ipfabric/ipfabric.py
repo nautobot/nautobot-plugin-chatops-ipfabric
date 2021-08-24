@@ -133,3 +133,81 @@ class IpFabric:
         if state != "any":
             payload["filters"] = {"and": [{"hostname": ["eq", device]}, {"state": ["eq", state]}]}
         return self.get_response("/api/v1/tables/routing/protocols/bgp/neighbors", payload)
+
+    def get_path_simulation(
+        self, src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id
+    ):  # pylint: disable=too-many-arguments
+        """Path Simulation from source to destination IP.
+
+        Args:
+            src_ip ([string]): Source IP
+            dst_ip ([string]): Destination IP
+            src_port ([string]): Source Port
+            dst_port ([string]): Destination Port
+            protocol ([string]): Transport Protocol
+            snapshot_id ([string]): Snapshot ID
+
+        Returns:
+            [list]: Parsed end-to-end path
+        """
+        response = self.get_path_simulation(src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id)
+        graph = response.get("graph", {})
+        nodes = {graph_node["id"]: graph_node for graph_node in graph.get("nodes", {})}
+        edges = {edge["id"]: edge for edge in graph.get("edges", {})}
+        path = []
+
+        # ipfabric returns the source of the path as the last element in the nodes list
+        for idx, node in enumerate(graph.get("nodes", [])[::-1]):
+            edge_id = node["forwarding"][0]["dstIntList"][0]["id"]
+            edge = edges.get(edge_id)
+            if not edge or idx == len(nodes) - 1:
+                continue  # don't add to path as the edge for the penultimate node will contain the 'target' node
+            path.append(
+                (
+                    idx + 1,
+                    node.get("hostname"),
+                    edge["slabel"],
+                    edge["srcAddr"],
+                    edge["dstAddr"],
+                    edge["tlabel"],
+                    nodes.get(edge["target"], {}).get("hostname"),
+                )
+            )
+        return path
+
+    def get_src_dst_endpoint(
+        self, src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id
+    ):  # pylint: disable=too-many-arguments
+        """Get the source/destination interface and source/destination node for the path.
+
+        Args:
+            src_ip ([string]): Source IP
+            dst_ip ([string]): Destination IP
+            src_port ([string]): Source Port
+            dst_port ([string]): Destination Port
+            protocol ([string]): Transport Protocol
+            snapshot_id ([string]): Snapshot ID
+
+        Returns:
+            [dict]: Src and Dst interface and node strings
+        """
+        response = self.get_path_simulation(src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id)
+        graph = response.get("graph", {})
+
+        endpoints = {}
+        src_intf = ""
+        dst_intf = ""
+        src_node = ""
+        dst_node = ""
+
+        # ipfabric returns the source of the path as the last element in the nodes list
+        for idx, node in enumerate(graph.get("nodes", [])[::-1]):
+            if idx == 0:
+                src_intf = node["forwarding"][0]["srcIntList"][0]["int"]
+                src_node = node.get("hostname")
+                endpoints["src"] = f"{src_intf} - {src_node}"
+            if idx == len(graph.get("nodes", [])) - 1:
+                dst_intf = node["forwarding"][0]["dstIntList"][0]["int"]
+                dst_node = node.get("hostname")
+                endpoints["dst"] = f"{dst_intf} - {dst_node}"
+        return endpoints
