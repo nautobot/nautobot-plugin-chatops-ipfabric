@@ -445,7 +445,7 @@ def routing(dispatcher, device=None, protocol=None, filter_opt=None):
             "choices": devices,
             "default": devices[0],
         },
-        {"type": "select", "label": "Data type", "choices": [("BGP Neighbors", "bgp-neighbors")]},
+        {"type": "select", "label": "Protocol", "choices": [("BGP Neighbors", "bgp-neighbors")]},
     ]
 
     if not all([protocol, device]):
