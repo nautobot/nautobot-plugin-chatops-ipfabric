@@ -36,7 +36,10 @@ def ipfabric(subcommand, **kwargs):
 
 def prompt_device_input(action_id, help_text, dispatcher, choices=None):
     """Prompt the user for input."""
-    choices = [(device["hostname"], device["hostname"].lower()) for device in ipfabric_api.get_devices_info()]
+    choices = [
+        (device["hostname"], device["hostname"].lower())
+        for device in ipfabric_api.get_devices_info(get_user_snapshot(dispatcher))
+    ]
     dispatcher.prompt_from_menu(action_id, help_text, choices)
     return False
 
@@ -109,7 +112,7 @@ def get_snapshot(dispatcher):
 @subcommand_of("ipfabric")
 def device_list(dispatcher):
     """IP Fabric Inventory device list."""
-    devices = ipfabric_api.get_devices_info()
+    devices = ipfabric_api.get_devices_info(get_user_snapshot(dispatcher))
 
     dispatcher.send_blocks(
         [
@@ -145,6 +148,10 @@ def interfaces(dispatcher, device=None, metric=None):
     devices = [
         (device["hostname"], device["hostname"].lower()) for device in ipfabric_api.get_devices_info(snapshot_id)
     ]
+
+    if not devices:
+        dispatcher.markdown_block(f"Sorry, but your current snapshot {snapshot_id} has no devices defined yet.")
+        return True
 
     dialog_list = [
         {
@@ -331,7 +338,7 @@ def end_to_end_path(
     )
 
     # request simulation
-    path = ipfabric.get_path_simulation(src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id)
+    path = ipfabric.get_parsed_get_path_simulation(src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id)
     endpoints = ipfabric.get_src_dst_endpoint(src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id)
 
     dispatcher.send_markdown(
@@ -357,6 +364,10 @@ def routing(dispatcher, device=None, protocol=None, filter_opt=None):
     devices = [
         (device["hostname"], device["hostname"].lower()) for device in ipfabric_api.get_devices_info(snapshot_id)
     ]
+
+    if not devices:
+        dispatcher.markdown_block(f"Sorry, but your current snapshot {snapshot_id} has no devices defined yet.")
+        return True
 
     dialog_list = [
         {

@@ -134,9 +134,9 @@ class IpFabric:
             payload["filters"] = {"and": [{"hostname": ["eq", device]}, {"state": ["eq", state]}]}
         return self.get_response("/api/v1/tables/routing/protocols/bgp/neighbors", payload)
 
-    def get_path_simulation(
+    def get_parsed_get_path_simulation(
         self, src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id
-    ):  # pylint: disable=too-many-arguments
+    ):  # pylint: disable=too-many-arguments, too-many-locals
         """Path Simulation from source to destination IP.
 
         Args:
@@ -177,7 +177,7 @@ class IpFabric:
 
     def get_src_dst_endpoint(
         self, src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id
-    ):  # pylint: disable=too-many-arguments
+    ):  # pylint: disable=too-many-arguments, too-many-locals
         """Get the source/destination interface and source/destination node for the path.
 
         Args:
