@@ -31,14 +31,6 @@ def ipfabric(subcommand, **kwargs):
     return handle_subcommands("ipfabric", subcommand, **kwargs)
 
 
-def prompt_hello_input(action_id, help_text, dispatcher, choices=None):
-    """Prompt the user for input."""
-    welcome_choices = ["Hi", "Hello", "Hola", "Ciao"]
-    choices = [(welcome, welcome.lower()) for welcome in welcome_choices]
-    dispatcher.prompt_from_menu(action_id, help_text, choices)
-    return False
-
-
 def path_simulation(src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id):  # pylint: disable=too-many-arguments
     """Path Simulation from source to destination IP.
 
@@ -311,18 +303,6 @@ def get_int_drops(dispatcher, device, snapshot_id):
         ],
     )
 
-    return True
-
-
-@subcommand_of("ipfabric")
-def hello_world(dispatcher, arg1=None):
-    """Run logic and return to user via client command '/ipfabric hello-world arg1'."""
-    if not arg1:
-        prompt_hello_input("ipfabric hello-world", "What would you like to say?", dispatcher)
-        return False
-
-    logger.debug("Received arg1 %s", arg1)
-    dispatcher.send_markdown(f"Just wanted to say {arg1}")
     return True
 
 
