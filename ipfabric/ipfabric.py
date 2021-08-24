@@ -109,7 +109,7 @@ class IpFabric:
 
         return self.get_response("/api/v1/tables/interfaces/drops/bidirectional", payload)
 
-    def get_bgp_neighbors(self, device, state):
+    def get_bgp_neighbors(self, device, state, snapshot_id="$last"):
         """Retrieve BGP neighbors in IP Fabric for a specific device."""
         logger.debug("Received BGP neighbor request")
 
@@ -126,7 +126,7 @@ class IpFabric:
                 "state",
                 "totalReceivedPrefixes",
             ],
-            "snapshot": "$last",
+            "snapshot": snapshot_id,
             "filters": {"hostname": ["eq", device]},
         }
 
