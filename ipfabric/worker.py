@@ -280,12 +280,10 @@ def get_int_drops(dispatcher, device, snapshot_id):
 
 @subcommand_of("ipfabric")
 def end_to_end_path(
-    dispatcher, src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id
+    dispatcher, src_ip, dst_ip, src_port, dst_port, protocol
 ):  # pylint: disable=too-many-arguments, too-many-locals
     """Execute end-to-end path simulation between source and target IP address."""
-    snapshots = [(snapshot.get("id", ""), snapshot.get("id", "")) for snapshot in ipfabric_api.get_snapshots()]
-
-    logger.info("Snapshots %s", snapshots)
+    snapshot_id = get_user_snapshot(dispatcher)
 
     dialog_list = [
         {
@@ -312,15 +310,9 @@ def end_to_end_path(
             "choices": [("TCP", "tcp"), ("UDP", "udp"), ("ICMP", "icmp")],
             "default": ("TCP", "tcp"),
         },
-        {
-            "type": "select",
-            "label": "Snapshot ID",
-            "choices": snapshots,
-            "default": snapshots[0],
-        },
     ]
 
-    if not all([src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id]):
+    if not all([src_ip, dst_ip, src_port, dst_port, protocol]):
         dispatcher.multi_input_dialog("ipfabric", "end-to-end-path", "Path Simulation", dialog_list)
         return CommandStatusChoices.STATUS_SUCCEEDED
 
@@ -335,7 +327,6 @@ def end_to_end_path(
                     ("src_port", src_port),
                     ("dst_port", dst_port),
                     ("protocol", protocol),
-                    ("snapshot_id", snapshot_id),
                 ],
                 "Path Simulation",
                 ipfabric_logo(dispatcher),

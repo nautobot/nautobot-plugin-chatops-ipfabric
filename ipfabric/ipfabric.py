@@ -63,6 +63,14 @@ class IpFabric:
         self, src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id
     ):  # pylint: disable=too-many-arguments
         """Return End to End Path Simulation."""
+        # end-to-end-path don't support $last as snapshot_id, getting the actual ID
+        if snapshot_id == "$last":
+            loaded_snapshots = [snap_id["id"] for snap_id in self.get_snapshots() if snap_id["state"] == "loaded"]
+            if not loaded_snapshots:
+                return []
+
+            snapshot_id = loaded_snapshots[-1]
+
         params = {
             "source": src_ip,
             "destination": dst_ip,
@@ -135,7 +143,7 @@ class IpFabric:
         return self.get_response("/api/v1/tables/routing/protocols/bgp/neighbors", payload)
 
     def get_parsed_get_path_simulation(
-        self, src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id
+        self, src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id="$last"
     ):  # pylint: disable=too-many-arguments, too-many-locals
         """Path Simulation from source to destination IP.
 
@@ -176,7 +184,7 @@ class IpFabric:
         return path
 
     def get_src_dst_endpoint(
-        self, src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id
+        self, src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id="$last"
     ):  # pylint: disable=too-many-arguments, too-many-locals
         """Get the source/destination interface and source/destination node for the path.
 
