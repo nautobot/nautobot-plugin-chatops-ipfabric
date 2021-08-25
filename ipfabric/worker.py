@@ -329,7 +329,14 @@ def end_to_end_path(
             *dispatcher.command_response_header(
                 "ipfabric",
                 "end-to-end-path",
-                [],
+                [
+                    ("src_ip", src_ip),
+                    ("dst_ip", dst_ip),
+                    ("src_port", src_port),
+                    ("dst_port", dst_port),
+                    ("protocol", protocol),
+                    ("snapshot_id", snapshot_id),
+                ],
                 "Path Simulation",
                 ipfabric_logo(dispatcher),
             ),
