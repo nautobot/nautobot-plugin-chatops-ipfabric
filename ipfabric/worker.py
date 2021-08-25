@@ -336,7 +336,7 @@ def end_to_end_path(
     )
 
     # request simulation
-    path = ipfabric.get_parsed_get_path_simulation(src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id)
+    path = ipfabric.get_parsed_path_simulation(src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id)
     endpoints = ipfabric.get_src_dst_endpoint(src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id)
 
     dispatcher.send_markdown(
