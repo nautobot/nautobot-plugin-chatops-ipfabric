@@ -11,7 +11,7 @@ TODO
 ## Usage
 
 Add a slash command to your chat platform called `/ipfabric`.
-See the [nautobot-chatops installation guide](https://github.com/nautobot/nautobot-plugin-chatops/blob/develop/docs/chat_setup.md) for instructions on adding a slash command to your chat channel.
+See the [nautobot-chatops installation guide](https://github.com/nautobot/nautobot-plugin-chatops/blob/develop/docs/chat_setup/chat_setup.md) for instructions on adding a slash command to your chat channel.
 
 The following commands are available:
 
