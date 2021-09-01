@@ -6,7 +6,20 @@ This plugin uses the [Nautobot ChatOps](https://github.com/nautobot/nautobot-plu
 
 ## Screenshots
 
-TODO
+![ipfabric-1](https://user-images.githubusercontent.com/29293048/131741031-0541c33f-3698-4c38-8e09-cb98652c74c1.png)
+
+![ipfabric-2](https://user-images.githubusercontent.com/29293048/131741040-58e9d6a1-e61d-4c60-a427-9f001934915f.png)
+
+![ipfabric-3](https://user-images.githubusercontent.com/29293048/131741046-4e01fbbb-4a82-4233-a8a1-9da4f31e2d93.png)
+
+![ipfabric-4](https://user-images.githubusercontent.com/29293048/131741054-9ae97b71-70f7-48ff-b7b9-15b70f95b7a8.png)
+
+![ipfabric-5](https://user-images.githubusercontent.com/29293048/131741063-a601fb0a-570c-466a-a078-15b2b6037ab8.png)
+
+![ipfabric-6](https://user-images.githubusercontent.com/29293048/131741068-5e5f1c63-65c7-4c3a-9763-dff06f81666f.png)
+
+![ipfabric-7](https://user-images.githubusercontent.com/29293048/131741075-6a52fef9-c9be-4686-950b-994566c6aec4.png)
+
 
 ## Usage
 
