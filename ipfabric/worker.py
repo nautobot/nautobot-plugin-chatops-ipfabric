@@ -69,6 +69,7 @@ def prompt_inventory_filter_values(action_id, help_text, dispatcher, filter_key,
     choices = {
         (device[column_name], device[column_name])
         for device in ipfabric_api.get_devices_info(get_user_snapshot(dispatcher))
+        if device.get(column_name)
     }
     dispatcher.prompt_from_menu(action_id, help_text, list(choices))
     return False
