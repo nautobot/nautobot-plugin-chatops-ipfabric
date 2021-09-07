@@ -52,9 +52,9 @@ class IpFabric:
                 "sn",
                 "loginIp",
             ],
+            "filters": {},
             "snapshot": snapshot_id,
         }
-        payload["filters"] = {}
         payload["filters"][search_key] = ["eq", search_value]
         logger.debug("Requesting inventory with payload: %s", payload)
         return self.get_response("/api/v1/tables/inventory/devices", payload)
