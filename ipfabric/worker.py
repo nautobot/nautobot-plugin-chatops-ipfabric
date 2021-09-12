@@ -344,7 +344,18 @@ def end_to_end_path(
         f"{dispatcher.bold('Destination: ')} {dst_ip} [{endpoints.get('dst')}]\n"
     )
     dispatcher.send_large_table(
-        ["Hop", "Src Host", "Src Intf", "Src IP", "Dst IP", "Dst Intf", "Dst Host"],
+        [
+            "Hop",
+            "Fwd Type",
+            "Src Host",
+            "Src Type",
+            "Src Intf",
+            "Src Fwd",
+            "Dst Fwd",
+            "Dst Intf",
+            "Dst Type",
+            "Dst Host",
+        ],
         path,
     )
 

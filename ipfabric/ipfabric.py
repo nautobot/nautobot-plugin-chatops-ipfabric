@@ -160,25 +160,56 @@ class IpFabric:
         """
         response = self.get_path_simulation(src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id)
         graph = response.get("graph", {})
-        nodes = {graph_node["id"]: graph_node for graph_node in graph.get("nodes", {})}
-        edges = {edge["id"]: edge for edge in graph.get("edges", {})}
         path = []
+        nodes = {graph_node["id"]: graph_node for graph_node in graph.get("nodes", {})}
 
         # ipfabric returns the source of the path as the last element in the nodes list
-        for idx, node in enumerate(graph.get("nodes", [])[::-1]):
-            edge_id = node["forwarding"][0]["dstIntList"][0]["id"]
-            edge = edges.get(edge_id)
-            if not edge or idx == len(nodes) - 1:
-                continue  # don't add to path as the edge for the penultimate node will contain the 'target' node
+        for idx, edge in enumerate(graph.get("edges", [])[::-1]):
+            forwarding_type = ""
+            edge_id = edge.get("id")
+
+            src_name = edge.get("source")
+            src_node = nodes.get(src_name, {})
+            src_forwarding = src_node.get("forwarding")
+            src_type = src_node.get("devType")
+            src_fwd = edge.get("srcAddr", "")
+            if src_forwarding:
+                forwarding_type = src_forwarding[0].get("search")
+
+            dst_name = edge.get("target")
+            dst_node = nodes.get(dst_name, {})
+            dst_forwarding = dst_node.get("forwarding")
+            dst_type = dst_node.get("devType")
+            dst_fwd = edge.get("dstAddr", "")
+            if dst_forwarding:
+                forwarding_type = dst_forwarding[0].get("search")
+
+            if src_forwarding and forwarding_type == "mpls":
+                # edge src tag
+                src_node_int_list = [*src_forwarding[0].get("srcIntList"), *src_forwarding[0].get("dstIntList")]
+                for intf in src_node_int_list:
+                    if intf.get("id") == edge_id:
+                        src_fwd = intf.get("labelStack")
+
+            if dst_forwarding and forwarding_type == "mpls":
+                # edge dst tag
+                dst_node_int_list = [*dst_forwarding[0].get("srcIntList"), *dst_forwarding[0].get("dstIntList")]
+                for intf in dst_node_int_list:
+                    if edge.get("tlabel") and intf.get("int") == edge.get("tlabel"):
+                        dst_fwd = intf.get("labelStack")
+
             path.append(
                 (
                     idx + 1,
-                    node.get("hostname"),
-                    edge["slabel"],
-                    edge["srcAddr"],
-                    edge["dstAddr"],
-                    edge["tlabel"],
-                    nodes.get(edge["target"], {}).get("hostname"),
+                    forwarding_type or "(empty)",
+                    src_node.get("hostname") or "(empty)",
+                    src_type or "(empty)",
+                    edge.get("slabel") or "(empty)",
+                    src_fwd or "(empty)",
+                    dst_fwd or "(empty)",
+                    edge.get("tlabel") or "(empty)",
+                    dst_type or "(empty)",
+                    dst_node.get("hostname") or "(empty)",
                 )
             )
         return path
@@ -201,21 +232,18 @@ class IpFabric:
         """
         response = self.get_path_simulation(src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id)
         graph = response.get("graph", {})
-
         endpoints = {}
-        src_intf = ""
-        dst_intf = ""
-        src_node = ""
-        dst_node = ""
+        endpoints["src"] = "Unknown"
+        endpoints["dst"] = "Unknown"
 
         # ipfabric returns the source of the path as the last element in the nodes list
         for idx, node in enumerate(graph.get("nodes", [])[::-1]):
-            if idx == 0:
-                src_intf = node["forwarding"][0]["srcIntList"][0]["int"]
-                src_node = node.get("hostname")
-                endpoints["src"] = f"{src_intf} - {src_node}"
-            if idx == len(graph.get("nodes", [])) - 1:
-                dst_intf = node["forwarding"][0]["dstIntList"][0]["int"]
-                dst_node = node.get("hostname")
-                endpoints["dst"] = f"{dst_intf} - {dst_node}"
+            node_forwarding = node.get("forwarding")
+            if node_forwarding:
+                if idx == 0:
+                    src_intf = node_forwarding[0]["srcIntList"][0]["int"]
+                    endpoints["src"] = f"{src_intf} -- {node.get('hostname')}"
+                elif idx == len(graph.get("nodes", [])) - 1:
+                    dst_intf = node_forwarding[0]["dstIntList"][0]["int"]
+                    endpoints["dst"] = f"{dst_intf} -- {node.get('hostname')}"
         return endpoints
