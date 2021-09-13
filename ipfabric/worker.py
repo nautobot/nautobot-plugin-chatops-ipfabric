@@ -19,6 +19,13 @@ ipfabric_api = IpFabric(
     token=settings.PLUGINS_CONFIG["ipfabric"].get("IPFABRIC_API_TOKEN"),
 )
 
+inventory_field_mapping = {
+    "site": "siteName",
+    "model": "model",
+    "platform": "platform",
+    "vendor": "vendor",
+}
+
 
 def ipfabric_logo(dispatcher):
     """Construct an image_element containing the locally hosted IP Fabric logo."""
@@ -46,7 +53,7 @@ def prompt_device_input(action_id, help_text, dispatcher, choices=None):
 
 def prompt_snapshot_id(action_id, help_text, dispatcher, choices=None):
     """Prompt the user for snapshot ID."""
-    snapshots = list()
+    snapshots = []
     for snapshot in ipfabric_api.get_snapshots():
         if snapshot["state"] == "loaded":
             snapshot_id = snapshot["id"]
@@ -54,6 +61,25 @@ def prompt_snapshot_id(action_id, help_text, dispatcher, choices=None):
             snapshots.append((snapshot_name, snapshot_id))
     choices = snapshots + [("$last", "$last")]
     return dispatcher.prompt_from_menu(action_id, help_text, choices, default=("$last", "$last"))
+
+
+def prompt_inventory_filter_values(action_id, help_text, dispatcher, filter_key, choices=None):
+    """Prompt the user for input inventory search value selection."""
+    column_name = inventory_field_mapping.get(filter_key.lower())
+    choices = {
+        (device[column_name], device[column_name])
+        for device in ipfabric_api.get_devices_info(get_user_snapshot(dispatcher))
+        if device.get(column_name)
+    }
+    dispatcher.prompt_from_menu(action_id, help_text, list(choices))
+    return False
+
+
+def prompt_inventory_filter_keys(action_id, help_text, dispatcher, choices=None):
+    """Prompt the user for input inventory search criteria."""
+    choices = [("Site", "site"), ("Model", "model"), ("Vendor", "vendor"), ("Platform", "platform")]
+    dispatcher.prompt_from_menu(action_id, help_text, choices)
+    return False
 
 
 # SNAPSHOT COMMANDS
@@ -110,17 +136,33 @@ def get_snapshot(dispatcher):
 
 
 @subcommand_of("ipfabric")
-def device_list(dispatcher):
+def get_inventory(dispatcher, filter_key=None, filter_value=None):
     """IP Fabric Inventory device list."""
-    devices = ipfabric_api.get_devices_info(get_user_snapshot(dispatcher))
+    if not filter_key:
+        prompt_inventory_filter_keys(
+            f"{BASE_CMD} get-inventory", "Select column name to filter inventory by:", dispatcher
+        )
+        return False
+
+    if not filter_value:
+        prompt_inventory_filter_values(
+            f"{BASE_CMD} get-inventory {filter_key}",
+            f"Select specific {filter_key} to filter by:",
+            dispatcher,
+            filter_key,
+        )
+        return False
+
+    col_name = inventory_field_mapping.get(filter_key.lower())
+    devices = ipfabric_api.get_device_inventory(col_name, filter_value, get_user_snapshot(dispatcher))
 
     dispatcher.send_blocks(
         [
             *dispatcher.command_response_header(
                 "ipfabric",
-                "device-list",
-                [],
-                "Inventory Device List",
+                "get-inventory",
+                [("Filter key", filter_key), ("Filter value", filter_value)],
+                "Device Inventory",
                 ipfabric_logo(dispatcher),
             ),
             dispatcher.markdown_block(f"{ipfabric_api.host_url}/inventory/devices"),
@@ -128,9 +170,19 @@ def device_list(dispatcher):
     )
 
     dispatcher.send_large_table(
-        ["Hostname", "Site", "Vendor", "Platform", "Model"],
+        ["Hostname", "Site", "Vendor", "Platform", "Model", "Memory Utilization", "S/W Version", "Serial", "Mgmt IP"],
         [
-            (device["hostname"], device["siteName"], device["vendor"], device["platform"], device["model"])
+            (
+                device.get("hostname") or "(empty)",
+                device.get("siteName") or "(empty)",
+                device.get("vendor") or "(empty)",
+                device.get("platform") or "(empty)",
+                device.get("model") or "(empty)",
+                device.get("memoryUtilization") or "(empty)",
+                device.get("version") or "(empty)",
+                device.get("sn") or "(empty)",
+                device.get("loginIp") or "(empty)",
+            )
             for device in devices
         ],
     )

@@ -31,9 +31,31 @@ class IpFabric:
         payload = {
             "columns": ["hostname", "siteName", "vendor", "platform", "model"],
             "filters": {},
-            "pagination": {"limit": 15, "start": 0},
             "snapshot": snapshot_id,
         }
+        return self.get_response("/api/v1/tables/inventory/devices", payload)
+
+    def get_device_inventory(self, search_key, search_value, snapshot_id="$last"):
+        """Return Device info."""
+        logger.debug("Received device inventory request")
+
+        # columns and snapshot required
+        payload = {
+            "columns": [
+                "hostname",
+                "siteName",
+                "vendor",
+                "platform",
+                "model",
+                "memoryUtilization",
+                "version",
+                "sn",
+                "loginIp",
+            ],
+            "filters": {search_key: ["eq", search_value]},
+            "snapshot": snapshot_id,
+        }
+        logger.debug("Requesting inventory with payload: %s", payload)
         return self.get_response("/api/v1/tables/inventory/devices", payload)
 
     def get_interfaces_load_info(self, device, snapshot_id="$last"):
