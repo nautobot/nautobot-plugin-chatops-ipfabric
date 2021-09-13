@@ -136,34 +136,6 @@ def get_snapshot(dispatcher):
 
 
 @subcommand_of("ipfabric")
-def device_list(dispatcher):
-    """IP Fabric Inventory device list."""
-    devices = ipfabric_api.get_devices_info(get_user_snapshot(dispatcher))
-
-    dispatcher.send_blocks(
-        [
-            *dispatcher.command_response_header(
-                "ipfabric",
-                "device-list",
-                [],
-                "Inventory Device List",
-                ipfabric_logo(dispatcher),
-            ),
-            dispatcher.markdown_block(f"{ipfabric_api.host_url}/inventory/devices"),
-        ]
-    )
-
-    dispatcher.send_large_table(
-        ["Hostname", "Site", "Vendor", "Platform", "Model"],
-        [
-            (device["hostname"], device["siteName"], device["vendor"], device["platform"], device["model"])
-            for device in devices
-        ],
-    )
-    return True
-
-
-@subcommand_of("ipfabric")
 def get_inventory(dispatcher, filter_key=None, filter_value=None):
     """IP Fabric Inventory device list."""
     if not filter_key:
