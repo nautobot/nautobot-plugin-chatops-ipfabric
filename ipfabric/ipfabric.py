@@ -9,6 +9,8 @@ logger = logging.getLogger("ipfabric")
 class IpFabric:
     """IpFabric will contain all the necessary API methods."""
 
+    EMPTY = "(empty)"
+
     def __init__(self, host_url, token):
         """Auth is contained in the 'X-API-Token' in the header."""
         self.headers = {"Accept": "application/json", "Content-Type": "application/json", "X-API-Token": token}
@@ -184,32 +186,33 @@ class IpFabric:
             if dst_forwarding:
                 forwarding_type = dst_forwarding[0].get("search")
 
-            if src_forwarding and forwarding_type == "mpls":
-                # edge src tag
-                src_node_int_list = [*src_forwarding[0].get("srcIntList"), *src_forwarding[0].get("dstIntList")]
-                for intf in src_node_int_list:
-                    if intf.get("id") == edge_id:
-                        src_fwd = intf.get("labelStack")
+            if forwarding_type == "mpls":
+                if src_forwarding:
+                    # edge src tag
+                    src_node_int_list = [*src_forwarding[0].get("srcIntList"), *src_forwarding[0].get("dstIntList")]
+                    for intf in src_node_int_list:
+                        if intf.get("id") == edge_id:
+                            src_fwd = intf.get("labelStack")
 
-            if dst_forwarding and forwarding_type == "mpls":
-                # edge dst tag
-                dst_node_int_list = [*dst_forwarding[0].get("srcIntList"), *dst_forwarding[0].get("dstIntList")]
-                for intf in dst_node_int_list:
-                    if edge.get("tlabel") and intf.get("int") == edge.get("tlabel"):
-                        dst_fwd = intf.get("labelStack")
+                if dst_forwarding:
+                    # edge dst tag
+                    dst_node_int_list = [*dst_forwarding[0].get("srcIntList"), *dst_forwarding[0].get("dstIntList")]
+                    for intf in dst_node_int_list:
+                        if edge.get("tlabel") and intf.get("int") == edge.get("tlabel"):
+                            dst_fwd = intf.get("labelStack")
 
             path.append(
                 (
                     idx + 1,
-                    forwarding_type or "(empty)",
-                    src_node.get("hostname") or "(empty)",
-                    src_type or "(empty)",
-                    edge.get("slabel") or "(empty)",
-                    src_fwd or "(empty)",
-                    dst_fwd or "(empty)",
-                    edge.get("tlabel") or "(empty)",
-                    dst_type or "(empty)",
-                    dst_node.get("hostname") or "(empty)",
+                    forwarding_type or IpFabric.EMPTY,
+                    src_node.get("hostname") or IpFabric.EMPTY,
+                    src_type or IpFabric.EMPTY,
+                    edge.get("slabel") or IpFabric.EMPTY,
+                    src_fwd or IpFabric.EMPTY,
+                    dst_fwd or IpFabric.EMPTY,
+                    edge.get("tlabel") or IpFabric.EMPTY,
+                    dst_type or IpFabric.EMPTY,
+                    dst_node.get("hostname") or IpFabric.EMPTY,
                 )
             )
         return path
