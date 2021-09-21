@@ -8,7 +8,7 @@ from nautobot.extras.plugins import PluginConfig
 class IPFabricConfig(PluginConfig):
     """Plugin configuration for the ipfabric plugin."""
 
-    name = "ipfabric"
+    name = "nautobot_chatops_ipfabric"
     verbose_name = "IPFabric"
     version = __version__
     author = "Network to Code, LLC"

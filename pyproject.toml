@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "ipfabric"
+name = "nautobot-chatops-ipfabric"
 version = "0.1.0"
 description = "IPFabric"
 authors = ["Network to Code, LLC <info@networktocode.com>"]
@@ -17,20 +17,15 @@ include = [
     "README.md",
 ]
 packages = [
-    { include = "ipfabric" },
+    { include = "nautobot_chatops_ipfabric" },
 ]
 
 [tool.poetry.plugins."nautobot.workers"]
-"ipfabric" = "ipfabric.worker:ipfabric"
+"ipfabric" = "nautobot_chatops_ipfabric.worker:ipfabric"
 
 [tool.poetry.dependencies]
 python = "^3.6"
-nautobot = "^1.0.2"
 nautobot-chatops = "^1.1.0"
-django-extensions = "^3.1.3"
-celery = "^5.1.2"
-django-jinja = "^2.9.0"
-django-health-check = "^3.16.4"
 
 [tool.poetry.dev-dependencies]
 invoke = "*"

@@ -15,8 +15,8 @@ IPFABRIC_LOGO_ALT = "IPFabric Logo"
 logger = logging.getLogger("rq.worker")
 
 ipfabric_api = IpFabric(
-    host_url=settings.PLUGINS_CONFIG["ipfabric"].get("IPFABRIC_HOST"),
-    token=settings.PLUGINS_CONFIG["ipfabric"].get("IPFABRIC_API_TOKEN"),
+    host_url=settings.PLUGINS_CONFIG["nautobot_chatops_ipfabric"].get("IPFABRIC_HOST"),
+    token=settings.PLUGINS_CONFIG["nautobot_chatops_ipfabric"].get("IPFABRIC_API_TOKEN"),
 )
 
 inventory_field_mapping = {
