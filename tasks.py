@@ -284,7 +284,7 @@ def hadolint(context):
 @task
 def pylint(context):
     """Run pylint code analysis."""
-    command = 'pylint --init-hook "import nautobot; nautobot.setup()" --rcfile pyproject.toml ipfabric'
+    command = 'pylint --init-hook "import nautobot; nautobot.setup()" --rcfile pyproject.toml nautobot_chatops_ipfabric'
     run_command(context, command)
 
 
@@ -319,7 +319,7 @@ def check_migrations(context):
         "buffer": "Discard output from passing tests",
     }
 )
-def unittest(context, keepdb=False, label="ipfabric", failfast=False, buffer=True):
+def unittest(context, keepdb=False, label="nautobot_chatops_ipfabric", failfast=False, buffer=True):
     """Run Nautobot unit tests."""
     command = f"coverage run --module nautobot.core.cli test {label}"
 
@@ -335,7 +335,7 @@ def unittest(context, keepdb=False, label="ipfabric", failfast=False, buffer=Tru
 @task
 def unittest_coverage(context):
     """Report on code test coverage as measured by 'invoke unittest'."""
-    command = "coverage report --skip-covered --include 'ipfabric/*' --omit *migrations*"
+    command = "coverage report --skip-covered --include 'nautobot_chatops_ipfabric/*' --omit *migrations*"
 
     run_command(context, command)
 
