@@ -287,7 +287,7 @@ NAPALM_ARGS = {}
 PAGINATE_COUNT = int(os.environ.get("PAGINATE_COUNT", 50))
 
 # Enable installed plugins. Add the name of each plugin to the list.
-PLUGINS = ["nautobot_chatops", "ipfabric"]
+PLUGINS = ["nautobot_chatops", "nautobot_chatops_ipfabric"]
 
 # Plugins configuration settings. These settings are used by various plugins that the user may have installed.
 # Each key in the dictionary is the name of an installed plugin and its value is a dictionary of settings.
@@ -307,7 +307,7 @@ PLUGINS_CONFIG = {
         "microsoft_app_id": os.environ.get("MICROSOFT_APP_ID"),
         "microsoft_app_password": os.environ.get("MICROSOFT_APP_PASSWORD"),
     },
-    "ipfabric": {
+    "nautobot_chatops_ipfabric": {
         "IPFABRIC_API_TOKEN": os.environ.get("IPFABRIC_API_TOKEN"),
         "IPFABRIC_HOST": os.environ.get("IPFABRIC_HOST"),
     },
