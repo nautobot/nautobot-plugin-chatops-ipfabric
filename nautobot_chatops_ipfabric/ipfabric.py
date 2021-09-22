@@ -272,3 +272,47 @@ class IpFabric:
                     dst_intf = node_forwarding[0]["dstIntList"][0]["int"]
                     endpoints["dst"] = f"{dst_intf} -- {node.get('hostname')}"
         return endpoints
+
+    def get_wireless_clients(self, ssid=None, snapshot_id="$last"):
+        """Get details of wireless clients associated with access points."""
+        logger.debug("Received wireless client request")
+
+        payload = {
+            "columns": [
+                "controller",
+                "siteName",
+                "apName",
+                "client",
+                "clientIp",
+                "ssid",
+                "rssi",
+                "signalToNoiseRatio",
+                "state",
+            ],
+            "snapshot": snapshot_id,
+            "filters": {},
+        }
+
+        if ssid:
+            payload["filters"] = {"ssid": ["eq", ssid]}
+
+        return self.get_response("/api/v1/tables/wireless/clients", payload)
+
+    def get_wireless_ssids(self, snapshot_id="$last"):
+        """Get details of wireless SSIDs."""
+        logger.debug("Received wireless SSID request")
+
+        payload = {
+            "columns": [
+                "wlanSsid",
+                "siteName",
+                "apName",
+                "radioDscr",
+                "radioStatus",
+                "clientCount",
+            ],
+            "snapshot": snapshot_id,
+            "filters": {},
+        }
+
+        return self.get_response("/api/v1/tables/wireless/radio", payload)
