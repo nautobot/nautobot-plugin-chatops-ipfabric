@@ -3,7 +3,7 @@ import unittest
 import os
 import toml
 
-from ipfabric import __version__ as project_version
+from nautobot_chatops_ipfabric import __version__ as project_version
 
 
 class TestVersion(unittest.TestCase):
