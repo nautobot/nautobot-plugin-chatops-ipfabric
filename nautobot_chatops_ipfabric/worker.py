@@ -514,3 +514,41 @@ def get_bgp_neighbors(dispatcher, device=None, snapshot_id=None, state=None):
     )
 
     return True
+
+@subcommand_of("ipfabric")
+def wireless(dispatcher, ssid=None):
+    """Get wireless information by client or ssid."""
+    snapshot_id = get_user_snapshot(dispatcher)
+    logger.debug("Getting SSIDs")
+    ssids = [
+        (ssid["wlanSsid"].lower()) for ssid in ipfabric_api.get_wireless_ssids(snapshot_id)
+    ]
+
+    if not ssids:
+        dispatcher.markdown_block(f"Sorry, but your current snapshot {snapshot_id} has no SSIDs defined yet.")
+        return True
+
+    dialog_list = [
+        {
+            "type": "select",
+            "label": "SSID",
+            "choices": ssids,
+            "default": ssids[0],
+        }
+    ]
+
+    if not all([ssid]):
+        dispatcher.multi_input_dialog(f"{BASE_CMD}", "wireless", "Wireless Info", dialog_list)
+        return CommandStatusChoices.STATUS_SUCCEEDED
+
+    cmd_map = {"ssids": get_wireless_ssids, "clients": get_wireless_clients}
+    cmd_map[](dispatcher, ssid, snapshot_id)
+    return True
+
+def get_wireless_ssids(dispatcher, ssid, snapshot_id=None):
+    """Get Wireless SSIDs."""
+    pass
+
+def get_wireless_clients(dispatcher, ssid=None, snapshot_id=None):
+    """Get Wireless Clients."""
+    pass
