@@ -516,7 +516,7 @@ def get_bgp_neighbors(dispatcher, device=None, snapshot_id=None, state=None):
     return True
 
 @subcommand_of("ipfabric")
-def wireless(dispatcher, ssid=None):
+def wireless(dispatcher, option=None):
     """Get wireless information by client or ssid."""
     snapshot_id = get_user_snapshot(dispatcher)
     logger.debug("Getting SSIDs")
@@ -531,24 +531,30 @@ def wireless(dispatcher, ssid=None):
     dialog_list = [
         {
             "type": "select",
-            "label": "SSID",
-            "choices": ssids,
-            "default": ssids[0],
-        }
+            "label": "Option",
+            "choices": [("SSIDs", "ssids"), ("Clients", "clients")],
+            "default": ("SSIDs", "ssids"),
+        },
     ]
 
-    if not all([ssid]):
+    if not all([option]):
         dispatcher.multi_input_dialog(f"{BASE_CMD}", "wireless", "Wireless Info", dialog_list)
         return CommandStatusChoices.STATUS_SUCCEEDED
 
     cmd_map = {"ssids": get_wireless_ssids, "clients": get_wireless_clients}
-    cmd_map[](dispatcher, ssid, snapshot_id)
+    cmd_map[option](dispatcher, snapshot_id)
     return True
 
-def get_wireless_ssids(dispatcher, ssid, snapshot_id=None):
+def get_wireless_ssids(dispatcher, snapshot_id=None):
     """Get Wireless SSIDs."""
+
+    ssids = ipfabric_api.get_wireless_ssids(snapshot_id)
+
     pass
 
 def get_wireless_clients(dispatcher, ssid=None, snapshot_id=None):
     """Get Wireless Clients."""
+
+    #prompt for ssid or all
+    clients = ipfabric_api.get_wireless_clients()
     pass
