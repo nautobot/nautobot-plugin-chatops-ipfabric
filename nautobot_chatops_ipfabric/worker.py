@@ -520,13 +520,13 @@ def wireless(dispatcher, option=None):
     """Get wireless information by client or ssid."""
     snapshot_id = get_user_snapshot(dispatcher)
     logger.debug("Getting SSIDs")
-    ssids = [
-        (ssid["wlanSsid"].lower()) for ssid in ipfabric_api.get_wireless_ssids(snapshot_id)
-    ]
+    # ssids = [
+    #     (ssid["wlanSsid"].lower()) for ssid in ipfabric_api.get_wireless_ssids(snapshot_id)
+    # ]
 
-    if not ssids:
-        dispatcher.markdown_block(f"Sorry, but your current snapshot {snapshot_id} has no SSIDs defined yet.")
-        return True
+    # if not ssids:
+    #     dispatcher.markdown_block(f"Sorry, but your current snapshot {snapshot_id} has no SSIDs defined yet.")
+    #     return True
 
     dialog_list = [
         {
@@ -537,7 +537,7 @@ def wireless(dispatcher, option=None):
         },
     ]
 
-    if not all([option]):
+    if not option:
         dispatcher.multi_input_dialog(f"{BASE_CMD}", "wireless", "Wireless Info", dialog_list)
         return CommandStatusChoices.STATUS_SUCCEEDED
 
@@ -548,13 +548,57 @@ def wireless(dispatcher, option=None):
 def get_wireless_ssids(dispatcher, snapshot_id=None):
     """Get Wireless SSIDs."""
 
-    ssids = ipfabric_api.get_wireless_ssids(snapshot_id)
+    # ssids = ipfabric_api.get_wireless_ssids(snapshot_id)
+    ssids = [
+        (ssid["wlanSsid"].lower()) for ssid in ipfabric_api.get_wireless_ssids(snapshot_id)
+    ]
+
+    dialog_list = [
+        {
+            "type": "select",
+            "label": "Device",
+            "choices": ssids,
+            "default": ssids[0],
+        },
+    ]
 
     pass
 
 def get_wireless_clients(dispatcher, ssid=None, snapshot_id=None):
     """Get Wireless Clients."""
-
+    ssids = [
+        (ssid["wlanSsid"].lower()) for ssid in ipfabric_api.get_wireless_ssids(snapshot_id)
+    ]
     #prompt for ssid or all
+    if not ssid:
+        dialog_list = [
+            {
+                "type": "select",
+                "label": "Device",
+                "choices": ssids,
+                "default": ssids[0],
+            },
+        ]
+        dispatcher.prompt_from_menu(
+            f"{BASE_CMD} wireless clients {ssid}",
+            "Clients attached to SSID",
+            dialog_list,
+            default=("Any", "any"),
+        )
+        return False
+
     clients = ipfabric_api.get_wireless_clients()
-    pass
+
+    dispatcher.send_blocks(
+        [
+            *dispatcher.command_response_header(
+                "ipfabric",
+                "wireless",
+                [("Option", "clients"), ("SSID", ssid)],
+                "Wireless Client info by SSID",
+                ipfabric_logo(dispatcher),
+            ),
+            dispatcher.markdown_block(f"{ipfabric_api.host_url}/api/v1/tables/wireless/clients"),
+        ]
+    )
+    return True
