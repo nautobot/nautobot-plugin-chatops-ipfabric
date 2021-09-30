@@ -202,7 +202,18 @@ def interfaces(dispatcher, device=None, metric=None):
     ]
 
     if not devices:
+        dispatcher.send_blocks(
+            [
+                *dispatcher.command_response_header(
+                    "ipfabric",
+                    "routing",
+                    [("Error")],
+                    "Device interface metric data",
+                    ipfabric_logo(dispatcher),
+                ),
         dispatcher.markdown_block(f"Sorry, but your current snapshot {snapshot_id} has no devices defined yet.")
+            ]
+        )
         return True
 
     dialog_list = [
@@ -427,7 +438,18 @@ def routing(dispatcher, device=None, protocol=None, filter_opt=None):
     ]
 
     if not devices:
+        dispatcher.send_blocks(
+            [
+                *dispatcher.command_response_header(
+                    "ipfabric",
+                    "routing",
+                    [("Error")],
+                    "Routing data",
+                    ipfabric_logo(dispatcher),
+                ),
         dispatcher.markdown_block(f"Sorry, but your current snapshot {snapshot_id} has no devices defined yet.")
+            ]
+        )
         return True
 
     dialog_list = [
@@ -442,7 +464,7 @@ def routing(dispatcher, device=None, protocol=None, filter_opt=None):
 
     if not all([protocol, device]):
         dispatcher.multi_input_dialog(f"{BASE_CMD}", "routing", "Routing Info", dialog_list)
-        return CommandStatusChoices.STATUS_SUCCEEDED
+        return False
 
     cmd_map = {"bgp-neighbors": get_bgp_neighbors}
     cmd_map[protocol](dispatcher, device, snapshot_id, filter_opt)
@@ -479,6 +501,7 @@ def get_bgp_neighbors(dispatcher, device=None, snapshot_id=None, state=None):
                 "BGP neighbor data",
                 ipfabric_logo(dispatcher),
             ),
+
             dispatcher.markdown_block(f"{ipfabric_api.host_url}/technology/routing/bgp/neighbors"),
         ]
     )
@@ -513,62 +536,123 @@ def get_bgp_neighbors(dispatcher, device=None, snapshot_id=None, state=None):
         ],
     )
 
-    return True
+    return CommandStatusChoices.STATUS_SUCCEEDED
 
 @subcommand_of("ipfabric")
-def wireless(dispatcher, option=None):
+def wireless(dispatcher, option=None, ssid=None):
     """Get wireless information by client or ssid."""
     snapshot_id = get_user_snapshot(dispatcher)
     logger.debug("Getting SSIDs")
-    # ssids = [
-    #     (ssid["wlanSsid"].lower()) for ssid in ipfabric_api.get_wireless_ssids(snapshot_id)
-    # ]
-
-    # if not ssids:
-    #     dispatcher.markdown_block(f"Sorry, but your current snapshot {snapshot_id} has no SSIDs defined yet.")
-    #     return True
-
-    dialog_list = [
-        {
-            "type": "select",
-            "label": "Option",
-            "choices": [("SSIDs", "ssids"), ("Clients", "clients")],
-            "default": ("SSIDs", "ssids"),
-        },
-    ]
-
-    if not option:
-        dispatcher.multi_input_dialog(f"{BASE_CMD}", "wireless", "Wireless Info", dialog_list)
-        return CommandStatusChoices.STATUS_SUCCEEDED
-
-    cmd_map = {"ssids": get_wireless_ssids, "clients": get_wireless_clients}
-    cmd_map[option](dispatcher, snapshot_id)
-    return True
-
-def get_wireless_ssids(dispatcher, snapshot_id=None):
-    """Get Wireless SSIDs."""
-
-    # ssids = ipfabric_api.get_wireless_ssids(snapshot_id)
     ssids = [
         (ssid["wlanSsid"].lower()) for ssid in ipfabric_api.get_wireless_ssids(snapshot_id)
     ]
 
-    dialog_list = [
-        {
-            "type": "select",
-            "label": "Device",
-            "choices": ssids,
-            "default": ssids[0],
-        },
+    if not ssids:
+        dispatcher.send_blocks(
+            [
+                *dispatcher.command_response_header(
+                    "ipfabric",
+                    "wireless",
+                    [("Error")],
+                    "IPFabric Wireless",
+                    ipfabric_logo(dispatcher),
+                ),
+                dispatcher.markdown_block(f"Sorry, but your current snapshot {snapshot_id} has no SSIDs defined yet.")
     ]
+        )
+        return True
 
-    pass
+    if not option:
+        dispatcher.prompt_from_menu(
+            f"{BASE_CMD} wireless", 
+            "Wireless Info",
+            choices=[("ssids", "ssids"), ("clients", "clients")],
+            default=("clients", "clients"),
+        )
+        return False
+
+    cmd_map = {"clients": get_wireless_clients, "ssids": get_wireless_ssids}
+    cmd_map[option](dispatcher, option, snapshot_id)
+    return False
+
+def get_wireless_ssids(dispatcher, ssid, snapshot_id=None):
+    """Get All Wireless SSID Information."""
+
+    ssids = [
+        (ssid["wlanSsid"].lower()) for ssid in ipfabric_api.get_wireless_ssids(snapshot_id)
+    ]
+    if not ssids:
+        dispatcher.send_blocks(
+            [
+                *dispatcher.command_response_header(
+                    "ipfabric",
+                    "wireless ssids",
+                    [("Error")],
+                    "IPFabric Wireless",
+                    ipfabric_logo(dispatcher),
+                ),
+                dispatcher.markdown_block(f"Sorry, but your current snapshot {snapshot_id} has no SSIDs defined yet.")
+            ]
+        )
+        return True
+
+    ssids = ipfabric_api.get_wireless_ssids()
+
+    dispatcher.send_blocks(
+        [
+            *dispatcher.command_response_header(
+                "ipfabric",
+                "wireless",
+                [("Option", "clients"), ("SSID", ssid)],
+                "Wireless Client info by SSID",
+                ipfabric_logo(dispatcher),
+            ),
+            dispatcher.markdown_block(f"{ipfabric_api.host_url}/api/v1/tables/wireless/clients"),
+    ]
+    )
+    dispatcher.send_large_table(
+        [
+            "SSID",
+            "Site",
+            "AP",
+            "Radio",
+            "Radio Status",
+            "Client Count",
+        ],
+        [
+            (
+                ssid["wlanSsid"],
+                ssid["siteName"],
+                ssid["apName"],
+                ssid["radioDscr"],
+                ssid["radioStatus"],
+                ssid["clientCount"],
+            )
+            for ssid in ssids
+        ],
+    )
+    return CommandStatusChoices.STATUS_SUCCEEDED
 
 def get_wireless_clients(dispatcher, ssid=None, snapshot_id=None):
     """Get Wireless Clients."""
     ssids = [
-        (ssid["wlanSsid"].lower()) for ssid in ipfabric_api.get_wireless_ssids(snapshot_id)
+        (ssid["wlanSsid"]) for ssid in ipfabric_api.get_wireless_ssids(snapshot_id)
     ]
+    if not ssids:
+        dispatcher.send_blocks(
+            [
+                *dispatcher.command_response_header(
+                    "ipfabric",
+                    "wireless clients",
+                    [("Error")],
+                    "IPFabric Wireless",
+                    ipfabric_logo(dispatcher),
+                ),
+                dispatcher.markdown_block(f"Sorry, but your current snapshot {snapshot_id} has no SSIDs defined yet.")
+            ]
+        )
+        return True
+
     #prompt for ssid or all
     if not ssid:
         dialog_list = [
@@ -581,9 +665,9 @@ def get_wireless_clients(dispatcher, ssid=None, snapshot_id=None):
         ]
         dispatcher.prompt_from_menu(
             f"{BASE_CMD} wireless clients {ssid}",
-            "Clients attached to SSID",
-            dialog_list,
-            default=("Any", "any"),
+            "Clients attached to an SSID",
+            choices = ssids,
+            default = ssids[0]
         )
         return False
 
@@ -601,4 +685,32 @@ def get_wireless_clients(dispatcher, ssid=None, snapshot_id=None):
             dispatcher.markdown_block(f"{ipfabric_api.host_url}/api/v1/tables/wireless/clients"),
         ]
     )
-    return True
+
+    dispatcher.send_large_table(
+        [
+            "controller",
+            "siteName",
+            "apName",
+            "client",
+            "clientIp",
+            "ssid",
+            "rssi",
+            "SNR",
+            "state",
+        ],
+        [
+            (
+                client["controller"],
+                client["Site Name"],
+                client["AP"],
+                client["Clien"],
+                client["IP"],
+                client["SSID"],
+                client["RSSI"],
+                client["SNR"],
+                client["State"],
+            )
+            for client in clients
+        ],
+    )
+    return CommandStatusChoices.STATUS_SUCCEEDED
