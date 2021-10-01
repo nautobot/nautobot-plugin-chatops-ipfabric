@@ -211,7 +211,9 @@ def interfaces(dispatcher, device=None, metric=None):
                     "Device interface metric data",
                     ipfabric_logo(dispatcher),
                 ),
-        dispatcher.markdown_block(f"Sorry, but your current snapshot {snapshot_id} has no devices defined yet.")
+                dispatcher.markdown_block(
+                    f"Sorry, but your current snapshot {snapshot_id} has no devices defined yet."
+                ),
             ]
         )
         return True
@@ -447,7 +449,9 @@ def routing(dispatcher, device=None, protocol=None, filter_opt=None):
                     "Routing data",
                     ipfabric_logo(dispatcher),
                 ),
-        dispatcher.markdown_block(f"Sorry, but your current snapshot {snapshot_id} has no devices defined yet.")
+                dispatcher.markdown_block(
+                    f"Sorry, but your current snapshot {snapshot_id} has no devices defined yet."
+                ),
             ]
         )
         return True
@@ -501,7 +505,6 @@ def get_bgp_neighbors(dispatcher, device=None, snapshot_id=None, state=None):
                 "BGP neighbor data",
                 ipfabric_logo(dispatcher),
             ),
-
             dispatcher.markdown_block(f"{ipfabric_api.host_url}/technology/routing/bgp/neighbors"),
         ]
     )
@@ -538,14 +541,13 @@ def get_bgp_neighbors(dispatcher, device=None, snapshot_id=None, state=None):
 
     return CommandStatusChoices.STATUS_SUCCEEDED
 
+
 @subcommand_of("ipfabric")
 def wireless(dispatcher, option=None, ssid=None):
     """Get wireless information by client or ssid."""
     snapshot_id = get_user_snapshot(dispatcher)
     logger.debug("Getting SSIDs")
-    ssids = [
-        (ssid["wlanSsid"].lower()) for ssid in ipfabric_api.get_wireless_ssids(snapshot_id)
-    ]
+    ssids = [(ssidi["wlanSsid"].lower()) for ssidi in ipfabric_api.get_wireless_ssids(snapshot_id)]
 
     if not ssids:
         dispatcher.send_blocks(
@@ -557,7 +559,7 @@ def wireless(dispatcher, option=None, ssid=None):
                     "IPFabric Wireless",
                     ipfabric_logo(dispatcher),
                 ),
-                dispatcher.markdown_block(f"Sorry, but your current snapshot {snapshot_id} has no SSIDs defined yet.")
+                dispatcher.markdown_block(f"Sorry, but your current snapshot {snapshot_id} has no SSIDs defined yet."),
     ]
         )
         return True
@@ -572,15 +574,13 @@ def wireless(dispatcher, option=None, ssid=None):
         return False
 
     cmd_map = {"clients": get_wireless_clients, "ssids": get_wireless_ssids}
-    cmd_map[option](dispatcher, option, snapshot_id)
+    cmd_map[option](dispatcher, ssid, snapshot_id)
     return False
+
 
 def get_wireless_ssids(dispatcher, ssid, snapshot_id=None):
     """Get All Wireless SSID Information."""
-
-    ssids = [
-        (ssid["wlanSsid"].lower()) for ssid in ipfabric_api.get_wireless_ssids(snapshot_id)
-    ]
+    ssids = [(ssid["wlanSsid"].lower()) for ssid in ipfabric_api.get_wireless_ssids(snapshot_id)]
     if not ssids:
         dispatcher.send_blocks(
             [
@@ -591,7 +591,7 @@ def get_wireless_ssids(dispatcher, ssid, snapshot_id=None):
                     "IPFabric Wireless",
                     ipfabric_logo(dispatcher),
                 ),
-                dispatcher.markdown_block(f"Sorry, but your current snapshot {snapshot_id} has no SSIDs defined yet.")
+                dispatcher.markdown_block(f"Sorry, but your current snapshot {snapshot_id} has no SSIDs defined yet."),
             ]
         )
         return True
@@ -633,11 +633,10 @@ def get_wireless_ssids(dispatcher, ssid, snapshot_id=None):
     )
     return CommandStatusChoices.STATUS_SUCCEEDED
 
+
 def get_wireless_clients(dispatcher, ssid=None, snapshot_id=None):
     """Get Wireless Clients."""
-    ssids = [
-        (ssid["wlanSsid"]) for ssid in ipfabric_api.get_wireless_ssids(snapshot_id)
-    ]
+    ssids = [(ssid["wlanSsid"]) for ssid in ipfabric_api.get_wireless_ssids(snapshot_id)]
     if not ssids:
         dispatcher.send_blocks(
             [
@@ -648,26 +647,15 @@ def get_wireless_clients(dispatcher, ssid=None, snapshot_id=None):
                     "IPFabric Wireless",
                     ipfabric_logo(dispatcher),
                 ),
-                dispatcher.markdown_block(f"Sorry, but your current snapshot {snapshot_id} has no SSIDs defined yet.")
+                dispatcher.markdown_block(f"Sorry, but your current snapshot {snapshot_id} has no SSIDs defined yet."),
             ]
         )
         return True
 
-    #prompt for ssid or all
+    # prompt for ssid or all
     if not ssid:
-        dialog_list = [
-            {
-                "type": "select",
-                "label": "Device",
-                "choices": ssids,
-                "default": ssids[0],
-            },
-        ]
         dispatcher.prompt_from_menu(
-            f"{BASE_CMD} wireless clients {ssid}",
-            "Clients attached to an SSID",
-            choices = ssids,
-            default = ssids[0]
+            f"{BASE_CMD} wireless clients {ssid}", "Clients attached to an SSID", choices=ssids, default=ssids[0]
         )
         return False
 
