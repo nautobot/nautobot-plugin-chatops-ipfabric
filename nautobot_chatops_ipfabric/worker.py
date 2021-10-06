@@ -676,27 +676,27 @@ def get_wireless_clients(dispatcher, ssid=None, snapshot_id=None):
 
     dispatcher.send_large_table(
         [
-            "controller",
-            "siteName",
-            "apName",
-            "client",
-            "clientIp",
-            "ssid",
-            "rssi",
+            "Controller",
+            "Site Name",
+            "AP",
+            "Client",
+            "Client IP",
+            "SSID",
+            "RSSI",
             "SNR",
-            "state",
+            "State",
         ],
         [
             (
                 client["controller"],
-                client["Site Name"],
-                client["AP"],
-                client["Client"],
-                client["IP"],
-                client["SSID"],
-                client["RSSI"],
+                client["siteName"],
+                client["apName"],
+                client["client"],
+                client["clientIp"],
+                client["ssid"],
+                client["rssi"],
                 client["SNR"],
-                client["State"],
+                client["state"],
             )
             for client in clients
         ],
