@@ -636,7 +636,10 @@ def get_wireless_ssids(dispatcher, ssid=None, snapshot_id=None):
 
 def get_wireless_clients(dispatcher, ssid=None, snapshot_id=None):
     """Get Wireless Clients."""
-    ssids = [(f"{ssid_['wlanSsid']}-{ssid_['radioDscr']}", ssid_["wlanSsid"]) for ssid_ in ipfabric_api.get_wireless_ssids(snapshot_id)]
+    ssids = [
+        (f"{ssid_['wlanSsid']}-{ssid_['radioDscr']}", ssid_["wlanSsid"])
+        for ssid_ in ipfabric_api.get_wireless_ssids(snapshot_id)
+    ]
     if not ssids:
         dispatcher.send_blocks(
             [
