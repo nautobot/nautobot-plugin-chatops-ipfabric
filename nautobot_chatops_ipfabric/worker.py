@@ -607,7 +607,7 @@ def get_wireless_ssids(dispatcher, ssid=None, snapshot_id=None):
                 "Wireless info for SSIDs",
                 ipfabric_logo(dispatcher),
             ),
-            dispatcher.markdown_block(f"{ipfabric_api.host_url}/api/v1/tables/wireless/clients"),
+            dispatcher.markdown_block(f"{ipfabric_api.host_url}api/v1/tables/wireless/clients"),
     ]
     )
     dispatcher.send_large_table(
@@ -641,7 +641,7 @@ def get_wireless_clients(dispatcher, ssid=None, snapshot_id=None):
         dispatcher.send_blocks(
             [
                 *dispatcher.command_response_header(
-                    "ipfabric",
+                    f"{BASE_CMD}",
                     "wireless clients",
                     [(" ", " ")],
                     "IPFabric Wireless",
@@ -655,7 +655,7 @@ def get_wireless_clients(dispatcher, ssid=None, snapshot_id=None):
     # prompt for ssid or all
     if not ssid:
         dispatcher.prompt_from_menu(
-            f"{BASE_CMD} wireless clients {ssid}", "Clients attached to an SSID", choices=ssids, default=ssids[0]
+            f"{BASE_CMD} wireless clients", "Clients attached to an SSID", choices=ssids, default=ssids[0]
         )
         return False
 
@@ -664,13 +664,13 @@ def get_wireless_clients(dispatcher, ssid=None, snapshot_id=None):
     dispatcher.send_blocks(
         [
             *dispatcher.command_response_header(
-                "ipfabric",
+                f"{BASE_CMD}",
                 "wireless",
                 [("Option", "clients"), ("SSID", ssid)],
                 "Wireless Client info by SSID",
                 ipfabric_logo(dispatcher),
             ),
-            dispatcher.markdown_block(f"{ipfabric_api.host_url}/api/v1/tables/wireless/clients"),
+            dispatcher.markdown_block(f"{ipfabric_api.host_url}api/v1/tables/wireless/clients"),
         ]
     )
 
