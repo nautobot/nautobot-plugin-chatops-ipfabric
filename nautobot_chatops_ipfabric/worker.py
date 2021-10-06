@@ -659,7 +659,7 @@ def get_wireless_clients(dispatcher, ssid=None, snapshot_id=None):
         )
         return False
 
-    clients = ipfabric_api.get_wireless_clients()
+    clients = ipfabric_api.get_wireless_clients(ssid, snapshot_id)
 
     dispatcher.send_blocks(
         [
@@ -691,7 +691,7 @@ def get_wireless_clients(dispatcher, ssid=None, snapshot_id=None):
                 client["controller"],
                 client["Site Name"],
                 client["AP"],
-                client["Clien"],
+                client["Client"],
                 client["IP"],
                 client["SSID"],
                 client["RSSI"],
