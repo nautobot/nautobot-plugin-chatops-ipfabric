@@ -596,15 +596,15 @@ def get_wireless_ssids(dispatcher, ssid=None, snapshot_id=None):
         )
         return True
 
-    ssids = ipfabric_api.get_wireless_ssids()
+    ssids = ipfabric_api.get_wireless_ssids(snapshot_id)
 
     dispatcher.send_blocks(
         [
             *dispatcher.command_response_header(
                 "ipfabric",
                 "wireless",
-                [("Option", "clients"), ("SSID", ssid)],
-                "Wireless Client info by SSID",
+                [("Option", "ssids")],
+                "Wireless info for SSIDs",
                 ipfabric_logo(dispatcher),
             ),
             dispatcher.markdown_block(f"{ipfabric_api.host_url}/api/v1/tables/wireless/clients"),
