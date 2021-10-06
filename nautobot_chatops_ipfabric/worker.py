@@ -578,7 +578,7 @@ def wireless(dispatcher, option=None, ssid=None):
     return False
 
 
-def get_wireless_ssids(dispatcher, ssid, snapshot_id=None):
+def get_wireless_ssids(dispatcher, ssid=None, snapshot_id=None):
     """Get All Wireless SSID Information."""
     ssids = [(ssid_["wlanSsid"].lower()) for ssid_ in ipfabric_api.get_wireless_ssids(snapshot_id)]
     if not ssids:
