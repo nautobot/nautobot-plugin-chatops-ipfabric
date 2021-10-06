@@ -207,7 +207,7 @@ def interfaces(dispatcher, device=None, metric=None):
                 *dispatcher.command_response_header(
                     "ipfabric",
                     "routing",
-                    [("Error")],
+                    [(" "), (" ")],
                     "Device interface metric data",
                     ipfabric_logo(dispatcher),
                 ),
@@ -445,7 +445,7 @@ def routing(dispatcher, device=None, protocol=None, filter_opt=None):
                 *dispatcher.command_response_header(
                     "ipfabric",
                     "routing",
-                    [("Error")],
+                    [(" ", " ")],
                     "Routing data",
                     ipfabric_logo(dispatcher),
                 ),
@@ -555,7 +555,7 @@ def wireless(dispatcher, option=None, ssid=None):
                 *dispatcher.command_response_header(
                     "ipfabric",
                     "wireless",
-                    [("Error")],
+                    [(" ", " ")],
                     "IPFabric Wireless",
                     ipfabric_logo(dispatcher),
                 ),
