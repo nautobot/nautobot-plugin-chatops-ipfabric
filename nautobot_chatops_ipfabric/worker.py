@@ -682,8 +682,8 @@ def get_wireless_clients(dispatcher, ssid=None, snapshot_id=None):
             "Client",
             "Client IP",
             "SSID",
-            "RSSI",
-            "SNR",
+            "RSSI (dBm)",
+            "SNR (dB)",
             "State",
         ],
         [
@@ -695,7 +695,7 @@ def get_wireless_clients(dispatcher, ssid=None, snapshot_id=None):
                 client["clientIp"],
                 client["ssid"],
                 client["rssi"],
-                client["SNR"],
+                client["signalToNoiseRatio"],
                 client["state"],
             )
             for client in clients
