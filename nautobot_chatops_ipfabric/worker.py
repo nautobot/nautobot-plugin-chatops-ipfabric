@@ -553,7 +553,7 @@ def wireless(dispatcher, option=None, ssid=None):
         dispatcher.send_blocks(
             [
                 *dispatcher.command_response_header(
-                    "ipfabric",
+                    f"{BASE_CMD}",
                     "wireless",
                     [(" ", " ")],
                     "IPFabric Wireless",
