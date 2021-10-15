@@ -222,7 +222,8 @@ def interfaces(dispatcher, device=None, metric=None):
         {
             "type": "select",
             "label": "Device",
-            "choices": devices,
+            # Slack supports a max of 100 items
+            "choices": devices[:99],
             "default": devices[0],
         },
         {
@@ -460,7 +461,8 @@ def routing(dispatcher, device=None, protocol=None, filter_opt=None):
         {
             "type": "select",
             "label": "Device",
-            "choices": devices,
+            # Slack supports a max of 100 items
+            "choices": devices[:99],
             "default": devices[0],
         },
         {"type": "select", "label": "Protocol", "choices": [("BGP Neighbors", "bgp-neighbors")]},
