@@ -560,13 +560,13 @@ def wireless(dispatcher, option=None, ssid=None):
                     ipfabric_logo(dispatcher),
                 ),
                 dispatcher.markdown_block(f"Sorry, but your current snapshot {snapshot_id} has no SSIDs defined yet."),
-    ]
+            ]
         )
         return True
 
     if not option:
         dispatcher.prompt_from_menu(
-            f"{BASE_CMD} wireless", 
+            f"{BASE_CMD} wireless",
             "Wireless Info",
             choices=[("ssids", "ssids"), ("clients", "clients")],
             default=("clients", "clients"),
@@ -608,7 +608,7 @@ def get_wireless_ssids(dispatcher, ssid=None, snapshot_id=None):
                 ipfabric_logo(dispatcher),
             ),
             dispatcher.markdown_block(f"{ipfabric_api.host_url}api/v1/tables/wireless/clients"),
-    ]
+        ]
     )
     dispatcher.send_large_table(
         [
