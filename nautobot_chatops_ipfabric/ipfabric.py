@@ -3,6 +3,9 @@
 import logging
 import requests
 
+# Default IP Fabric API pagination limit
+DEFAULT_PAGE_LIMIT = 100
+
 logger = logging.getLogger("ipfabric")
 
 
@@ -25,7 +28,7 @@ class IpFabric:
         response = requests.request(method, self.host_url + url, json=payload, params=params, headers=self.headers)
         return response.json()
 
-    def get_devices_info(self, snapshot_id="$last"):
+    def get_devices_info(self, snapshot_id="$last", limit=DEFAULT_PAGE_LIMIT):
         """Return Device info."""
         logger.debug("Received device list request")
 
@@ -33,11 +36,12 @@ class IpFabric:
         payload = {
             "columns": ["hostname", "siteName", "vendor", "platform", "model"],
             "filters": {},
+            "pagination": {"limit": limit, "start": 0},
             "snapshot": snapshot_id,
         }
         return self.get_response("/api/v1/tables/inventory/devices", payload)
 
-    def get_device_inventory(self, search_key, search_value, snapshot_id="$last"):
+    def get_device_inventory(self, search_key, search_value, snapshot_id="$last", limit=DEFAULT_PAGE_LIMIT):
         """Return Device info."""
         logger.debug("Received device inventory request")
 
@@ -55,12 +59,13 @@ class IpFabric:
                 "loginIp",
             ],
             "filters": {search_key: ["eq", search_value]},
+            "pagination": {"limit": limit, "start": 0},
             "snapshot": snapshot_id,
         }
         logger.debug("Requesting inventory with payload: %s", payload)
         return self.get_response("/api/v1/tables/inventory/devices", payload)
 
-    def get_interfaces_load_info(self, device, snapshot_id="$last"):
+    def get_interfaces_load_info(self, device, snapshot_id="$last", limit=DEFAULT_PAGE_LIMIT):
         """Return Interface load info."""
         logger.debug("Received interface counters request")
 
@@ -68,7 +73,7 @@ class IpFabric:
         payload = {
             "columns": ["intName", "inBytes", "outBytes"],
             "filters": {"hostname": ["eq", device]},
-            "pagination": {"limit": 48, "start": 0},
+            "pagination": {"limit": limit, "start": 0},
             "snapshot": snapshot_id,
             "sort": {"order": "desc", "column": "intName"},
         }
@@ -111,7 +116,7 @@ class IpFabric:
         payload = {}
         return self.get_response_json("GET", "/api/v1/graph/end-to-end-path", payload, params)
 
-    def get_interfaces_errors_info(self, device, snapshot_id="$last"):
+    def get_interfaces_errors_info(self, device, snapshot_id="$last", limit=DEFAULT_PAGE_LIMIT):
         """Return bi-directional interface errors info."""
         logger.debug("Received interface error counters request")
 
@@ -119,14 +124,14 @@ class IpFabric:
         payload = {
             "columns": ["intName", "errPktsPct", "errRate"],
             "filters": {"hostname": ["eq", device]},
-            "pagination": {"limit": 48, "start": 0},
+            "pagination": {"limit": limit, "start": 0},
             "snapshot": snapshot_id,
             "sort": {"order": "desc", "column": "intName"},
         }
 
         return self.get_response("/api/v1/tables/interfaces/errors/bidirectional", payload)
 
-    def get_interfaces_drops_info(self, device, snapshot_id="$last"):
+    def get_interfaces_drops_info(self, device, snapshot_id="$last", limit=DEFAULT_PAGE_LIMIT):
         """Return interface drops info."""
         logger.debug("Received interface drop counters request")
 
@@ -134,14 +139,14 @@ class IpFabric:
         payload = {
             "columns": ["intName", "dropsPktsPct", "dropsRate"],
             "filters": {"hostname": ["eq", device]},
-            "pagination": {"limit": 48, "start": 0},
+            "pagination": {"limit": limit, "start": 0},
             "snapshot": snapshot_id,
             "sort": {"order": "desc", "column": "intName"},
         }
 
         return self.get_response("/api/v1/tables/interfaces/drops/bidirectional", payload)
 
-    def get_bgp_neighbors(self, device, state, snapshot_id="$last"):
+    def get_bgp_neighbors(self, device, state, snapshot_id="$last", limit=DEFAULT_PAGE_LIMIT):
         """Retrieve BGP neighbors in IP Fabric for a specific device."""
         logger.debug("Received BGP neighbor request")
 
@@ -160,6 +165,7 @@ class IpFabric:
             ],
             "snapshot": snapshot_id,
             "filters": {"hostname": ["eq", device]},
+            "pagination": {"limit": limit, "start": 0},
         }
 
         if state != "any":
@@ -273,7 +279,7 @@ class IpFabric:
                     endpoints["dst"] = f"{dst_intf} -- {node.get('hostname')}"
         return endpoints
 
-    def get_wireless_clients(self, ssid=None, snapshot_id="$last"):
+    def get_wireless_clients(self, ssid=None, snapshot_id="$last", limit=DEFAULT_PAGE_LIMIT):
         """Get details of wireless clients associated with access points."""
         logger.debug("Received wireless client request")
 
@@ -290,6 +296,7 @@ class IpFabric:
                 "state",
             ],
             "snapshot": snapshot_id,
+            "pagination": {"limit": limit, "start": 0},
             "filters": {},
         }
 
@@ -298,7 +305,7 @@ class IpFabric:
 
         return self.get_response("/api/v1/tables/wireless/clients", payload)
 
-    def get_wireless_ssids(self, snapshot_id="$last"):
+    def get_wireless_ssids(self, snapshot_id="$last", limit=DEFAULT_PAGE_LIMIT):
         """Get details of wireless SSIDs."""
         logger.debug("Received wireless SSID request")
 
@@ -313,6 +320,7 @@ class IpFabric:
             ],
             "snapshot": snapshot_id,
             "filters": {},
+            "pagination": {"limit": limit, "start": 0},
         }
 
         return self.get_response("/api/v1/tables/wireless/radio", payload)
