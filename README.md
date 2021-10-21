@@ -20,7 +20,6 @@ This plugin uses the [Nautobot ChatOps](https://github.com/nautobot/nautobot-plu
 
 ![ipfabric-7](https://user-images.githubusercontent.com/29293048/131741075-6a52fef9-c9be-4686-950b-994566c6aec4.png)
 
-
 ## Usage
 
 Add a slash command to your chat platform called `/ipfabric`.
@@ -34,6 +33,7 @@ The following commands are available:
 - `/ipfabric interfaces [device] [metric]`: Get interface metrics for a device.
 - `/ipfabric end-to-end-path [src-ip] [dst-ip] [src-port] [dst-port] [protocol]`: Execute end-to-end path simulation between source and target IP address.
 - `/ipfabric routing [device] [protocol] [filter-opt]`: Get routing information for a device.
+- `/ipfabric wireless [option] [ssid]`: Get wireless information by client or ssid.
 
 IP Fabric uses a concept of snapshots which can include different devices and data. The plugin supports querying specific snapshots via the `/ipfabric set-snapshot` command. The snapshot is set per user and cached for all future commands. If a snapshot is not set, the commands will default to `$last` unless a specific snapshot id is required.
 
