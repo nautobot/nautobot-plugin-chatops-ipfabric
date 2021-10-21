@@ -6,7 +6,7 @@ This plugin uses the [Nautobot ChatOps](https://github.com/nautobot/nautobot-plu
 
 ## Screenshots
 
-![ipfabric-1](https://user-images.githubusercontent.com/29293048/131741031-0541c33f-3698-4c38-8e09-cb98652c74c1.png)
+![image](https://user-images.githubusercontent.com/29293048/138304572-46d2fa11-8dd2-4722-9ab0-450e20a657a5.png)
 
 ![ipfabric-2](https://user-images.githubusercontent.com/29293048/131741040-58e9d6a1-e61d-4c60-a427-9f001934915f.png)
 
@@ -19,7 +19,6 @@ This plugin uses the [Nautobot ChatOps](https://github.com/nautobot/nautobot-plu
 ![ipfabric-6](https://user-images.githubusercontent.com/29293048/131741068-5e5f1c63-65c7-4c3a-9763-dff06f81666f.png)
 
 ![ipfabric-7](https://user-images.githubusercontent.com/29293048/131741075-6a52fef9-c9be-4686-950b-994566c6aec4.png)
-
 
 ## Usage
 
@@ -34,6 +33,7 @@ The following commands are available:
 - `/ipfabric interfaces [device] [metric]`: Get interface metrics for a device.
 - `/ipfabric end-to-end-path [src-ip] [dst-ip] [src-port] [dst-port] [protocol]`: Execute end-to-end path simulation between source and target IP address.
 - `/ipfabric routing [device] [protocol] [filter-opt]`: Get routing information for a device.
+- `/ipfabric wireless [option] [ssid]`: Get wireless information by client or ssid.
 
 IP Fabric uses a concept of snapshots which can include different devices and data. The plugin supports querying specific snapshots via the `/ipfabric set-snapshot` command. The snapshot is set per user and cached for all future commands. If a snapshot is not set, the commands will default to `$last` unless a specific snapshot id is required.
 
