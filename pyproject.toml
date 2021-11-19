@@ -38,6 +38,7 @@ pylint-django = "*"
 pydocstyle = "*"
 flake8 = "*"
 coverage = "*"
+importlib-metadata = ">=3.5"
 
 [tool.black]
 line-length = 120
