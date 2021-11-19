@@ -24,7 +24,7 @@ packages = [
 "ipfabric" = "nautobot_chatops_ipfabric.worker:ipfabric"
 
 [tool.poetry.dependencies]
-python = "^3.6"
+python = "^3.6.2"
 nautobot-chatops = "^1.1.0"
 
 [tool.poetry.dev-dependencies]
@@ -38,6 +38,7 @@ pylint-django = "*"
 pydocstyle = "*"
 flake8 = "*"
 coverage = "*"
+importlib-metadata = ">=3.5"
 
 [tool.black]
 line-length = 120
