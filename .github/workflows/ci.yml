@@ -58,7 +58,7 @@ jobs:
   yamllint:
     runs-on: "ubuntu-20.04"
     env:
-      INVOKE_NAUTOBOT_CHATOPS_IPFABRIC_LOCAL: "True"
+      INVOKE_IPFABRIC_LOCAL: "True"
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v2"
