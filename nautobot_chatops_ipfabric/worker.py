@@ -5,6 +5,8 @@ from django.conf import settings
 from django_rq import job
 from nautobot_chatops.choices import CommandStatusChoices
 from nautobot_chatops.workers import subcommand_of, handle_subcommands
+from netutils.ip import is_ip
+from netutils.mac import is_valid_mac
 from .ipfabric import IpFabric
 from .context import get_context, set_context
 
@@ -25,6 +27,9 @@ inventory_field_mapping = {
     "platform": "platform",
     "vendor": "vendor",
 }
+
+inventory_host_fields = ["ip", "mac"]
+inventory_host_func_mapper = {inventory_host_fields[0]: is_ip, inventory_host_fields[1]: is_valid_mac}
 
 
 def ipfabric_logo(dispatcher):
@@ -78,6 +83,13 @@ def prompt_inventory_filter_values(action_id, help_text, dispatcher, filter_key,
 def prompt_inventory_filter_keys(action_id, help_text, dispatcher, choices=None):
     """Prompt the user for input inventory search criteria."""
     choices = [("Site", "site"), ("Model", "model"), ("Vendor", "vendor"), ("Platform", "platform")]
+    dispatcher.prompt_from_menu(action_id, help_text, choices)
+    return False
+
+
+def prompt_find_host_filter_keys(action_id, help_text, dispatcher, choices=None):
+    """Prompt the user for find host search criteria."""
+    choices = [("Host IP address", inventory_host_fields[0]), ("Host MAC address", inventory_host_fields[1])]
     dispatcher.prompt_from_menu(action_id, help_text, choices)
     return False
 
@@ -705,3 +717,67 @@ def get_wireless_clients(dispatcher, ssid=None, snapshot_id=None):
         ],
     )
     return CommandStatusChoices.STATUS_SUCCEEDED
+
+
+@subcommand_of("ipfabric")
+def find_host(dispatcher, filter_key=None, filter_value=None):
+    """[summary]
+
+    Args:
+        dispatcher ([type]): [description]
+        filter_key ([type], optional): [description]. Defaults to None.
+        filter_value ([type], optional): [description]. Defaults to None.
+    """
+    SUB_CMD = "find-host"
+
+    if not filter_key:
+        prompt_find_host_filter_keys(f"{BASE_CMD} {SUB_CMD}", "Select filter criteria:", dispatcher)
+        return False
+
+    if not filter_value:
+        dispatcher.prompt_for_text(
+            f"{BASE_CMD} {SUB_CMD} {filter_key}",
+            f"Enter a specific {filter_key} to filter by:",
+            f"{filter_key.upper()}",
+        )
+        return False
+
+    is_valid_input = inventory_host_func_mapper.get(filter_key)
+    if not is_valid_input(filter_value):
+        dispatcher.send_error(f"You've entered an invalid {filter_key.upper()}")
+        return CommandStatusChoices.STATUS_FAILED
+
+    hosts = ipfabric_api.find_host(filter_key, filter_value, get_user_snapshot(dispatcher))
+
+    dispatcher.send_blocks(
+        [
+            *dispatcher.command_response_header(
+                f"{BASE_CMD}",
+                f"{SUB_CMD}",
+                [("Filter key", filter_key), ("Filter value", filter_value)],
+                "Host Inventory",
+                ipfabric_logo(dispatcher),
+            ),
+            dispatcher.markdown_block(f"{ipfabric_api.host_url}/inventory/hosts"),
+        ]
+    )
+
+    dispatcher.send_large_table(
+        ["Host IP", "VRF", "Host DNS", "Site", "Edges", "Gateways", "Access Points", "Host MAC", "Vendor", "VLAN"],
+        [
+            (
+                host.get("ip") or "(empty)",
+                host.get("vrf") or "(empty)",
+                host.get("dnsName") or "(empty)",
+                host.get("siteName") or "(empty)",
+                host.get("edges") or "(empty)",
+                host.get("gateways") or "(empty)",
+                host.get("accessPoints") or "(empty)",
+                host.get("mac") or "(empty)",
+                host.get("vendor") or "(empty)",
+                host.get("vlan") or "(empty)",
+            )
+            for host in hosts
+        ],
+    )
+    return True

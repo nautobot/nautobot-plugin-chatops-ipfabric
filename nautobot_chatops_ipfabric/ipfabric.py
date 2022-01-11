@@ -6,7 +6,7 @@ import requests
 # Default IP Fabric API pagination limit
 DEFAULT_PAGE_LIMIT = 100
 
-logger = logging.getLogger("ipfabric")
+logger = logging.getLogger("rq.worker")
 
 
 class IpFabric:
@@ -324,3 +324,46 @@ class IpFabric:
         }
 
         return self.get_response("/api/v1/tables/wireless/radio", payload)
+
+    def get_host(self, search_key, search_value, snapshot_id="$last", limit=DEFAULT_PAGE_LIMIT):
+        """Return inventory host information"""
+        logger.debug("Received host inventory request")
+
+        # columns and snapshot required
+        payload = {
+            "columns": [
+                "ip",
+                "vrf",
+                "dnsName",
+                "siteName",
+                "edges",
+                "gateways",
+                "accessPoints",
+                "mac",
+                "vendor",
+                "vlan",
+            ],
+            "filters": {search_key: ["eq", search_value]},
+            "pagination": {"limit": limit, "start": 0},
+            "snapshot": snapshot_id,
+        }
+        logger.debug("Requesting host inventory with payload: %s", payload)
+        return self.get_response("/api/v1/tables/addressing/hosts", payload)
+
+    def find_host(self, search_key, search_value, snapshot_id="$last", limit=DEFAULT_PAGE_LIMIT):
+        """Get and parse inventory host information"""
+        logger.debug("Parsing host inventory request")
+
+        hosts = self.get_host(search_key, search_value, snapshot_id)
+        logger.debug("Parsing hosts: %s", hosts)
+        parsed_hosts = []
+
+        for host in hosts:
+            for edge in host.get("edges"):
+                edge_details = " ".join([edge.get("hostname", ""), edge.get("intName", "")])
+                host["edges"] = edge_details
+            for gateway in host.get("gateways"):
+                gw_details = " ".join([gateway.get("hostname", ""), gateway.get("intName", "")])
+                host["gateways"] = gw_details
+            parsed_hosts.append(host)
+        return parsed_hosts
