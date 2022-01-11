@@ -326,7 +326,7 @@ class IpFabric:
         return self.get_response("/api/v1/tables/wireless/radio", payload)
 
     def get_host(self, search_key, search_value, snapshot_id="$last", limit=DEFAULT_PAGE_LIMIT):
-        """Return inventory host information"""
+        """Return inventory host information."""
         logger.debug("Received host inventory request")
 
         # columns and snapshot required
@@ -351,10 +351,10 @@ class IpFabric:
         return self.get_response("/api/v1/tables/addressing/hosts", payload)
 
     def find_host(self, search_key, search_value, snapshot_id="$last", limit=DEFAULT_PAGE_LIMIT):
-        """Get and parse inventory host information"""
+        """Get and parse inventory host information."""
         logger.debug("Parsing host inventory request")
 
-        hosts = self.get_host(search_key, search_value, snapshot_id)
+        hosts = self.get_host(search_key, search_value, snapshot_id, limit)
         logger.debug("Parsing hosts: %s", hosts)
         parsed_hosts = []
 

@@ -721,22 +721,16 @@ def get_wireless_clients(dispatcher, ssid=None, snapshot_id=None):
 
 @subcommand_of("ipfabric")
 def find_host(dispatcher, filter_key=None, filter_value=None):
-    """[summary]
-
-    Args:
-        dispatcher ([type]): [description]
-        filter_key ([type], optional): [description]. Defaults to None.
-        filter_value ([type], optional): [description]. Defaults to None.
-    """
-    SUB_CMD = "find-host"
+    """Get host information using the inventory host table."""
+    sub_cmd = "find-host"
 
     if not filter_key:
-        prompt_find_host_filter_keys(f"{BASE_CMD} {SUB_CMD}", "Select filter criteria:", dispatcher)
+        prompt_find_host_filter_keys(f"{BASE_CMD} {sub_cmd}", "Select filter criteria:", dispatcher)
         return False
 
     if not filter_value:
         dispatcher.prompt_for_text(
-            f"{BASE_CMD} {SUB_CMD} {filter_key}",
+            f"{BASE_CMD} {sub_cmd} {filter_key}",
             f"Enter a specific {filter_key} to filter by:",
             f"{filter_key.upper()}",
         )
@@ -753,7 +747,7 @@ def find_host(dispatcher, filter_key=None, filter_value=None):
         [
             *dispatcher.command_response_header(
                 f"{BASE_CMD}",
-                f"{SUB_CMD}",
+                f"{sub_cmd}",
                 [("Filter key", filter_key), ("Filter value", filter_value)],
                 "Host Inventory",
                 ipfabric_logo(dispatcher),
