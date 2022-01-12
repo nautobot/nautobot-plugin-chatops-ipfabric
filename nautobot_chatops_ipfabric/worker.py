@@ -1,8 +1,12 @@
 """Worker functions implementing Nautobot "ipfabric" command and subcommands."""
 import logging
+import tempfile
+import os
+from datetime import datetime
 
 from django.conf import settings
 from django_rq import job
+from netutils.ip import is_ip
 from nautobot_chatops.choices import CommandStatusChoices
 from nautobot_chatops.workers import subcommand_of, handle_subcommands
 from .ipfabric import IpFabric
@@ -349,6 +353,7 @@ def end_to_end_path(
 ):  # pylint: disable=too-many-arguments, too-many-locals
     """Execute end-to-end path simulation between source and target IP address."""
     snapshot_id = get_user_snapshot(dispatcher)
+    sub_cmd = "end-to-end-path"
 
     dialog_list = [
         {
@@ -378,14 +383,14 @@ def end_to_end_path(
     ]
 
     if not all([src_ip, dst_ip, src_port, dst_port, protocol]):
-        dispatcher.multi_input_dialog("ipfabric", "end-to-end-path", "Path Simulation", dialog_list)
+        dispatcher.multi_input_dialog(f"{BASE_CMD}", f"{sub_cmd}", "Path Simulation", dialog_list)
         return CommandStatusChoices.STATUS_SUCCEEDED
 
     dispatcher.send_blocks(
         [
             *dispatcher.command_response_header(
-                "ipfabric",
-                "end-to-end-path",
+                f"{BASE_CMD}",
+                f"{sub_cmd}",
                 [
                     ("src_ip", src_ip),
                     ("dst_ip", dst_ip),
@@ -423,6 +428,99 @@ def end_to_end_path(
         ],
         path,
     )
+
+    return True
+
+
+@subcommand_of("ipfabric")
+def pathlookup(
+    dispatcher, src_ip, dst_ip, src_port, dst_port, protocol
+):  # pylint: disable=too-many-arguments, too-many-locals
+    """Path simulation diagram lookup between source and target IP address."""
+    snapshot_id = get_user_snapshot(dispatcher)
+    sub_cmd = "pathlookup"
+    supported_protocols = ["tcp", "udp", "icmp"]
+    protocols = [(protocol.upper(), protocol) for protocol in supported_protocols]
+
+    dialog_list = [
+        {
+            "type": "text",
+            "label": "Source IP",
+        },
+        {
+            "type": "text",
+            "label": "Destination IP",
+        },
+        {
+            "type": "text",
+            "label": "Source Port",
+            "default": "1000",
+        },
+        {
+            "type": "text",
+            "label": "Destination Port",
+            "default": "22",
+        },
+        {
+            "type": "select",
+            "label": "Protocol",
+            "choices": protocols,
+            "default": protocols[0],
+        },
+    ]
+
+    if not all([src_ip, dst_ip, src_port, dst_port, protocol]):
+        dispatcher.multi_input_dialog(f"{BASE_CMD}", f"{sub_cmd}", "Path Lookup", dialog_list)
+        return CommandStatusChoices.STATUS_SUCCEEDED
+
+    # verify IP address and protocol is valid
+    if not is_ip(src_ip) or not is_ip(dst_ip):
+        dispatcher.send_error("You've entered an invalid IP address")
+        return CommandStatusChoices.STATUS_FAILED
+    if protocol not in supported_protocols:
+        dispatcher.send_error(f"You've entered an unsupported protocol: {protocol}")
+        return CommandStatusChoices.STATUS_FAILED
+
+    dispatcher.send_blocks(
+        [
+            *dispatcher.command_response_header(
+                f"{BASE_CMD}",
+                f"{sub_cmd}",
+                [
+                    ("src_ip", src_ip),
+                    ("dst_ip", dst_ip),
+                    ("src_port", src_port),
+                    ("dst_port", dst_port),
+                    ("protocol", protocol),
+                ],
+                "Path Lookup",
+                ipfabric_logo(dispatcher),
+            ),
+            dispatcher.markdown_block(f"{ipfabric_api.host_url}/diagrams/pathlookup"),
+        ]
+    )
+
+    # only supported in IP Fabric OS version 4.0+
+    response = ipfabric_api.get_os_version()
+    os_version = float(response.get("version", "0.0").rpartition(".")[0])
+    if os_version >= 4:
+        raw_png = ipfabric_api.get_pathlookup(src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id)
+        if not raw_png:
+            dispatcher.send_error("An error occurred while retrieving the path lookup")
+            return CommandStatusChoices.STATUS_FAILED
+        with tempfile.TemporaryDirectory() as tempdir:
+            # Note: Microsoft Teams will silently fail if we have ":" in our filename.
+            time_str = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+
+            img_path = os.path.join(tempdir, f"{sub_cmd}_{time_str}.png")
+            with open(img_path, "wb") as img_file:
+                img_file.write(raw_png)
+            dispatcher.send_image(img_path)
+    else:
+        dispatcher.send_error(
+            f"Your IP Fabric OS version {os_version} does not support PNG output. Please try the end-to-end-path command."
+        )
+        return CommandStatusChoices.STATUS_FAILED
 
     return True
 

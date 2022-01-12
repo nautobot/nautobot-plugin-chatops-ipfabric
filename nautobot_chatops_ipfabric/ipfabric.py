@@ -28,6 +28,12 @@ class IpFabric:
         response = requests.request(method, self.host_url + url, json=payload, params=params, headers=self.headers)
         return response.json()
 
+    def get_response_raw(self, method, url, payload, params=None):
+        """Get request and return response dict."""
+        headers = {**self.headers}
+        headers["Accept"] = "*/*"
+        return requests.request(method, self.host_url + url, json=payload, params=params, headers=headers)
+
     def get_devices_info(self, snapshot_id="$last", limit=DEFAULT_PAGE_LIMIT):
         """Return Device info."""
         logger.debug("Received device list request")
@@ -40,6 +46,13 @@ class IpFabric:
             "snapshot": snapshot_id,
         }
         return self.get_response("/api/v1/tables/inventory/devices", payload)
+
+    def get_os_version(self):
+        """Return Device info."""
+        logger.debug("Received OS version request")
+
+        payload = {}
+        return self.get_response_json("GET", "/api/v1/os/version", payload)
 
     def get_device_inventory(self, search_key, search_value, snapshot_id="$last", limit=DEFAULT_PAGE_LIMIT):
         """Return Device info."""
@@ -115,6 +128,38 @@ class IpFabric:
         # no payload required
         payload = {}
         return self.get_response_json("GET", "/api/v1/graph/end-to-end-path", payload, params)
+
+    def get_pathlookup(
+        self, src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id
+    ):  # pylint: disable=too-many-arguments
+        """Return pathlookup simulation as PNG output. Requires v4 IP Fabric server."""
+        payload = {
+            "snapshot": snapshot_id,
+            "parameters": {
+                "type": "pathLookup",
+                "pathLookupType": "unicast",
+                "protocol": protocol,
+                "startingPoint": src_ip,
+                "startingPort": src_port,
+                "destinationPoint": dst_ip,
+                "destinationPort": dst_port,
+                "groupBy": "siteName",
+                "networkMode": "true",
+                "securedPath": "false",
+            },
+        }
+        logger.debug(  # pylint: disable=logging-too-many-args
+            "Received end-to-end PNG path simulation request: ", payload
+        )
+
+        # no params required
+        params = {}
+        response = self.get_response_raw("POST", "/api/v1/graphs/png", payload, params=params)
+
+        # IP Fabric can potentially return a blank PNG file with status_code 200 when no path exists
+        if int(response.headers.get("Content-Length")) < 200:
+            return None
+        return response.content
 
     def get_interfaces_errors_info(self, device, snapshot_id="$last", limit=DEFAULT_PAGE_LIMIT):
         """Return bi-directional interface errors info."""
