@@ -48,11 +48,12 @@ class IpFabric:
         return self.get_response("/api/v1/tables/inventory/devices", payload)
 
     def get_os_version(self):
-        """Return Device info."""
+        """Return IP Fabric OS version info."""
         logger.debug("Received OS version request")
 
         payload = {}
-        return self.get_response_json("GET", "/api/v1/os/version", payload)
+        response = self.get_response_json("GET", "/api/v1/os/version", payload)
+        return float(response.get("version", "0.0").rpartition(".")[0])
 
     def get_device_inventory(self, search_key, search_value, snapshot_id="$last", limit=DEFAULT_PAGE_LIMIT):
         """Return Device info."""
