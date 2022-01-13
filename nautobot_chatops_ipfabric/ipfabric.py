@@ -327,7 +327,7 @@ class IpFabric:
 
     def get_host(self, search_key, search_value, snapshot_id="$last", limit=DEFAULT_PAGE_LIMIT):
         """Return inventory host information."""
-        logger.debug("Received host inventory request for %s %s", (search_key, search_value))
+        logger.debug("Received host inventory request - %s %s", search_key, search_value)
 
         # columns and snapshot required
         payload = {
@@ -352,7 +352,7 @@ class IpFabric:
 
     def find_host(self, search_key, search_value, snapshot_id="$last", limit=DEFAULT_PAGE_LIMIT):
         """Get and parse inventory host information."""
-        logger.debug("Received host inventory request for %s %s", (search_key, search_value))
+        logger.debug("Received host inventory request - %s %s", search_key, search_value)
 
         hosts = self.get_host(search_key, search_value, snapshot_id, limit)
         logger.debug("Parsing hosts: %s", hosts)
@@ -369,8 +369,8 @@ class IpFabric:
             for gateway in host.get("gateways"):
                 parsed_gws.append(f"{gateway.get('hostname', '')} ({gateway.get('intName', '')})")
 
-            for ap in host.get("accessPoints"):
-                parsed_aps.append(f"{ap.get('hostname', '')} ({ap.get('intName', '')})")
+            for access_point in host.get("accessPoints"):
+                parsed_aps.append(f"{access_point.get('hostname', '')} ({access_point.get('intName', '')})")
 
             host["edges"] = ";".join(parsed_edges) if parsed_edges else ""
             host["gateways"] = ";".join(parsed_gws) if parsed_gws else ""
