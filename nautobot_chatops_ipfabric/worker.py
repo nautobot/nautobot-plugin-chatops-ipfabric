@@ -736,8 +736,8 @@ def find_host(dispatcher, filter_key=None, filter_value=None):
         )
         return False
 
-    is_valid_input = inventory_host_func_mapper.get(filter_key)
-    if not is_valid_input(filter_value):
+    is_valid_input_func = inventory_host_func_mapper.get(filter_key)
+    if not is_valid_input_func(filter_value):
         dispatcher.send_error(f"You've entered an invalid {filter_key.upper()}")
         return CommandStatusChoices.STATUS_FAILED
 
