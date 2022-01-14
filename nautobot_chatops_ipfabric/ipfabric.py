@@ -53,7 +53,9 @@ class IpFabric:
 
         payload = {}
         response = self.get_response_json("GET", "/api/v1/os/version", payload)
-        return float(response.get("version", "0.0").rpartition(".")[0])
+        os_version = float(response.get("version", "0.0").rpartition(".")[0])
+        logger.debug("Your IP Fabric OS version is: %s", os_version)
+        return os_version
 
     def get_device_inventory(self, search_key, search_value, snapshot_id="$last", limit=DEFAULT_PAGE_LIMIT):
         """Return Device info."""
@@ -134,6 +136,7 @@ class IpFabric:
         self, src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id
     ):  # pylint: disable=too-many-arguments
         """Return pathlookup simulation as PNG output. Requires v4 IP Fabric server."""
+        no_png_flags = ["no-dgw", "no-receiver", "no-source"]  # a path with these flags results in any empty PNG
         payload = {
             "snapshot": snapshot_id,
             "parameters": {
@@ -155,12 +158,15 @@ class IpFabric:
 
         # no params required
         params = {}
-        response = self.get_response_raw("POST", "/api/v1/graphs/png", payload, params=params)
 
-        # IP Fabric can potentially return a blank PNG file with status_code 200 when no path exists
-        if int(response.headers.get("Content-Length")) < 200:
-            return None
-        return response.content
+        json_response = self.get_response_json("POST", "/api/v1/graphs", payload, params=params)
+        pathlookup = json_response.get("pathlookup", {})
+        png_response = self.get_response_raw("POST", "/api/v1/graphs/png", payload, params=params)
+
+        for flag in pathlookup.get("eventsSummary", {}).get("flags"):
+            if flag in no_png_flags:
+                return None
+        return png_response.content
 
     def get_interfaces_errors_info(self, device, snapshot_id="$last", limit=DEFAULT_PAGE_LIMIT):
         """Return bi-directional interface errors info."""
@@ -370,3 +376,10 @@ class IpFabric:
         }
 
         return self.get_response("/api/v1/tables/wireless/radio", payload)
+
+    def validate_version(self, operator_func, version):
+        """Validate the IP Fabric OS version."""
+        logger.debug("Validate IP Fabric OS version is %s %s", operator_func, version)
+
+        ipfabric_version = self.get_os_version()
+        return operator_func(ipfabric_version, version)

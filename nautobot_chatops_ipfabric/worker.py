@@ -3,6 +3,7 @@ import logging
 import tempfile
 import os
 from datetime import datetime
+from operator import ge
 
 from django.conf import settings
 from django_rq import job
@@ -442,6 +443,7 @@ def pathlookup(
     supported_protocols = ["tcp", "udp", "icmp"]
     protocols = [(protocol.upper(), protocol) for protocol in supported_protocols]
 
+    # identical to dialog_list in end-to-end-path; consolidate dialog_list if maintaining both cmds
     dialog_list = [
         {
             "type": "text",
@@ -501,29 +503,27 @@ def pathlookup(
     )
 
     # only supported in IP Fabric OS version 4.0+
-    os_version = ipfabric_api.get_os_version()
-    if os_version >= 4:
-        raw_png = ipfabric_api.get_pathlookup(src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id)
-        if not raw_png:
-            dispatcher.send_error("An error occurred while retrieving the path lookup")
-            return CommandStatusChoices.STATUS_FAILED
-        with tempfile.TemporaryDirectory() as tempdir:
-            # Note: Microsoft Teams will silently fail if we have ":" in our filename, so the timestamp has to skip them.
-            time_str = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-            try:
+    try:
+        if ipfabric_api.validate_version(ge, 4.0):
+            raw_png = ipfabric_api.get_pathlookup(src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id)
+            if not raw_png:
+                raise RuntimeError(
+                    "An error occurred while retrieving the path lookup. Please verify the path using the link above."
+                )
+            with tempfile.TemporaryDirectory() as tempdir:
+                # Note: Microsoft Teams will silently fail if we have ":" in our filename, so the timestamp has to skip them.
+                time_str = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
                 img_path = os.path.join(tempdir, f"{sub_cmd}_{time_str}.png")
                 with open(img_path, "wb") as img_file:
                     img_file.write(raw_png)
                 dispatcher.send_image(img_path)
-            except:
-                dispatcher.send_error("An error occurred rendering the PNG file")
-                return CommandStatusChoices.STATUS_FAILED
-    else:
-        dispatcher.send_error(
-            f"Your IP Fabric OS version {os_version} does not support PNG output. Please try the end-to-end-path command."
-        )
+        else:
+            raise RuntimeError(
+                "Your IP Fabric OS version does not support PNG output. Please try the end-to-end-path command."
+            )
+    except (RuntimeError, OSError) as error:
+        dispatcher.send_error(error)
         return CommandStatusChoices.STATUS_FAILED
-
     return True
 
 
