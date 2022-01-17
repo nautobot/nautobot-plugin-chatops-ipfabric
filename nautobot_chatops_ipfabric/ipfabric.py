@@ -6,7 +6,7 @@ import requests
 # Default IP Fabric API pagination limit
 DEFAULT_PAGE_LIMIT = 100
 
-logger = logging.getLogger("ipfabric")
+logger = logging.getLogger("rq.worker")
 
 
 class IpFabric:
@@ -324,3 +324,57 @@ class IpFabric:
         }
 
         return self.get_response("/api/v1/tables/wireless/radio", payload)
+
+    def get_host(self, search_key, search_value, snapshot_id="$last", limit=DEFAULT_PAGE_LIMIT):
+        """Return inventory host information."""
+        logger.debug("Received host inventory request - %s %s", search_key, search_value)
+
+        # columns and snapshot required
+        payload = {
+            "columns": [
+                "ip",
+                "vrf",
+                "dnsName",
+                "siteName",
+                "edges",
+                "gateways",
+                "accessPoints",
+                "mac",
+                "vendor",
+                "vlan",
+            ],
+            "filters": {search_key: ["eq", search_value]},
+            "pagination": {"limit": limit, "start": 0},
+            "snapshot": snapshot_id,
+        }
+        logger.debug("Requesting host inventory with payload: %s", payload)
+        return self.get_response("/api/v1/tables/addressing/hosts", payload)
+
+    def find_host(self, search_key, search_value, snapshot_id="$last", limit=DEFAULT_PAGE_LIMIT):
+        """Get and parse inventory host information."""
+        logger.debug("Received host inventory request - %s %s", search_key, search_value)
+
+        hosts = self.get_host(search_key, search_value, snapshot_id, limit)
+        logger.debug("Parsing hosts: %s", hosts)
+        parsed_hosts = []
+
+        for host in hosts:
+            parsed_edges = []
+            parsed_gws = []
+            parsed_aps = []
+
+            for edge in host.get("edges"):
+                parsed_edges.append(f"{edge.get('hostname', '')} ({edge.get('intName', '')})")
+
+            for gateway in host.get("gateways"):
+                parsed_gws.append(f"{gateway.get('hostname', '')} ({gateway.get('intName', '')})")
+
+            for access_point in host.get("accessPoints"):
+                parsed_aps.append(f"{access_point.get('hostname', '')} ({access_point.get('intName', '')})")
+
+            host["edges"] = ";".join(parsed_edges) if parsed_edges else ""
+            host["gateways"] = ";".join(parsed_gws) if parsed_gws else ""
+            host["accessPoints"] = ";".join(parsed_aps) if parsed_aps else ""
+
+            parsed_hosts.append(host)
+        return parsed_hosts
