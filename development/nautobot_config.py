@@ -41,7 +41,7 @@ def is_truthy(arg):
     return bool(strtobool(arg))
 
 
-DEBUG = False
+DEBUG = is_truthy(os.getenv("DEBUG", False))
 
 LOG_LEVEL = "DEBUG" if DEBUG else "INFO"
 
