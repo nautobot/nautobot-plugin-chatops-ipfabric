@@ -1,7 +1,7 @@
 
 ## v1.1.0 - 2022-MM-DD
 
-### Announcement
+### Deprecated
 
 - The `end-to-end-path` command is being deprecated and will be available for users of IP Fabric v3.8. Future path simulation capability will be developed in the `pathlookup` command for IP Fabric v4.
 
