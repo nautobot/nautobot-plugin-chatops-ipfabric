@@ -7,7 +7,6 @@ from operator import ge
 
 from django.conf import settings
 from django_rq import job
-from netutils.ip import is_ip
 from nautobot_chatops.choices import CommandStatusChoices
 from nautobot_chatops.workers import subcommand_of, handle_subcommands
 from netutils.ip import is_ip
