@@ -23,6 +23,7 @@ logger = logging.getLogger("rq.worker")
 ipfabric_api = IpFabric(
     host_url=settings.PLUGINS_CONFIG["nautobot_chatops_ipfabric"].get("IPFABRIC_HOST"),
     token=settings.PLUGINS_CONFIG["nautobot_chatops_ipfabric"].get("IPFABRIC_API_TOKEN"),
+    verify=settings.PLUGINS_CONFIG["nautobot_chatops_ipfabric"].get("IPFABRIC_VERIFY"),
 )
 
 inventory_field_mapping = {
