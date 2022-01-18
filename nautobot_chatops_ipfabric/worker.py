@@ -1,10 +1,16 @@
 """Worker functions implementing Nautobot "ipfabric" command and subcommands."""
 import logging
+import tempfile
+import os
+from datetime import datetime
+from operator import ge
 
 from django.conf import settings
 from django_rq import job
 from nautobot_chatops.choices import CommandStatusChoices
 from nautobot_chatops.workers import subcommand_of, handle_subcommands
+from netutils.ip import is_ip
+from netutils.mac import is_valid_mac
 from .ipfabric import IpFabric
 from .context import get_context, set_context
 
@@ -25,6 +31,9 @@ inventory_field_mapping = {
     "platform": "platform",
     "vendor": "vendor",
 }
+
+inventory_host_fields = ["ip", "mac"]
+inventory_host_func_mapper = {inventory_host_fields[0]: is_ip, inventory_host_fields[1]: is_valid_mac}
 
 
 def ipfabric_logo(dispatcher):
@@ -78,6 +87,13 @@ def prompt_inventory_filter_values(action_id, help_text, dispatcher, filter_key,
 def prompt_inventory_filter_keys(action_id, help_text, dispatcher, choices=None):
     """Prompt the user for input inventory search criteria."""
     choices = [("Site", "site"), ("Model", "model"), ("Vendor", "vendor"), ("Platform", "platform")]
+    dispatcher.prompt_from_menu(action_id, help_text, choices)
+    return False
+
+
+def prompt_find_host_filter_keys(action_id, help_text, dispatcher, choices=None):
+    """Prompt the user for find host search criteria."""
+    choices = [("Host IP address", inventory_host_fields[0]), ("Host MAC address", inventory_host_fields[1])]
     dispatcher.prompt_from_menu(action_id, help_text, choices)
     return False
 
@@ -349,6 +365,7 @@ def end_to_end_path(
 ):  # pylint: disable=too-many-arguments, too-many-locals
     """Execute end-to-end path simulation between source and target IP address."""
     snapshot_id = get_user_snapshot(dispatcher)
+    sub_cmd = "end-to-end-path"
 
     dialog_list = [
         {
@@ -378,14 +395,14 @@ def end_to_end_path(
     ]
 
     if not all([src_ip, dst_ip, src_port, dst_port, protocol]):
-        dispatcher.multi_input_dialog("ipfabric", "end-to-end-path", "Path Simulation", dialog_list)
+        dispatcher.multi_input_dialog(f"{BASE_CMD}", f"{sub_cmd}", "Path Simulation", dialog_list)
         return CommandStatusChoices.STATUS_SUCCEEDED
 
     dispatcher.send_blocks(
         [
             *dispatcher.command_response_header(
-                "ipfabric",
-                "end-to-end-path",
+                f"{BASE_CMD}",
+                f"{sub_cmd}",
                 [
                     ("src_ip", src_ip),
                     ("dst_ip", dst_ip),
@@ -424,6 +441,100 @@ def end_to_end_path(
         path,
     )
 
+    return True
+
+
+@subcommand_of("ipfabric")
+def pathlookup(
+    dispatcher, src_ip, dst_ip, src_port, dst_port, protocol
+):  # pylint: disable=too-many-arguments, too-many-locals
+    """Path simulation diagram lookup between source and target IP address."""
+    snapshot_id = get_user_snapshot(dispatcher)
+    sub_cmd = "pathlookup"
+    supported_protocols = ["tcp", "udp", "icmp"]
+    protocols = [(protocol.upper(), protocol) for protocol in supported_protocols]
+
+    # identical to dialog_list in end-to-end-path; consolidate dialog_list if maintaining both cmds
+    dialog_list = [
+        {
+            "type": "text",
+            "label": "Source IP",
+        },
+        {
+            "type": "text",
+            "label": "Destination IP",
+        },
+        {
+            "type": "text",
+            "label": "Source Port",
+            "default": "1000",
+        },
+        {
+            "type": "text",
+            "label": "Destination Port",
+            "default": "22",
+        },
+        {
+            "type": "select",
+            "label": "Protocol",
+            "choices": protocols,
+            "default": protocols[0],
+        },
+    ]
+
+    if not all([src_ip, dst_ip, src_port, dst_port, protocol]):
+        dispatcher.multi_input_dialog(f"{BASE_CMD}", f"{sub_cmd}", "Path Lookup", dialog_list)
+        return CommandStatusChoices.STATUS_SUCCEEDED
+
+    # verify IP address and protocol is valid
+    if not is_ip(src_ip) or not is_ip(dst_ip):
+        dispatcher.send_error("You've entered an invalid IP address")
+        return CommandStatusChoices.STATUS_FAILED
+    if protocol not in supported_protocols:
+        dispatcher.send_error(f"You've entered an unsupported protocol: {protocol}")
+        return CommandStatusChoices.STATUS_FAILED
+
+    dispatcher.send_blocks(
+        [
+            *dispatcher.command_response_header(
+                f"{BASE_CMD}",
+                f"{sub_cmd}",
+                [
+                    ("src_ip", src_ip),
+                    ("dst_ip", dst_ip),
+                    ("src_port", src_port),
+                    ("dst_port", dst_port),
+                    ("protocol", protocol),
+                ],
+                "Path Lookup",
+                ipfabric_logo(dispatcher),
+            ),
+            dispatcher.markdown_block(f"{ipfabric_api.host_url}/diagrams/pathlookup"),
+        ]
+    )
+
+    # only supported in IP Fabric OS version 4.0+
+    try:
+        if ipfabric_api.validate_version(ge, 4.0):
+            raw_png = ipfabric_api.get_pathlookup(src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id)
+            if not raw_png:
+                raise RuntimeError(
+                    "An error occurred while retrieving the path lookup. Please verify the path using the link above."
+                )
+            with tempfile.TemporaryDirectory() as tempdir:
+                # Note: Microsoft Teams will silently fail if we have ":" in our filename, so the timestamp has to skip them.
+                time_str = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+                img_path = os.path.join(tempdir, f"{sub_cmd}_{time_str}.png")
+                with open(img_path, "wb") as img_file:
+                    img_file.write(raw_png)
+                dispatcher.send_image(img_path)
+        else:
+            raise RuntimeError(
+                "Your IP Fabric OS version does not support PNG output. Please try the end-to-end-path command."
+            )
+    except (RuntimeError, OSError) as error:
+        dispatcher.send_error(error)
+        return CommandStatusChoices.STATUS_FAILED
     return True
 
 
@@ -705,3 +816,61 @@ def get_wireless_clients(dispatcher, ssid=None, snapshot_id=None):
         ],
     )
     return CommandStatusChoices.STATUS_SUCCEEDED
+
+
+@subcommand_of("ipfabric")
+def find_host(dispatcher, filter_key=None, filter_value=None):
+    """Get host information using the inventory host table."""
+    sub_cmd = "find-host"
+
+    if not filter_key:
+        prompt_find_host_filter_keys(f"{BASE_CMD} {sub_cmd}", "Select filter criteria:", dispatcher)
+        return False
+
+    if not filter_value:
+        dispatcher.prompt_for_text(
+            f"{BASE_CMD} {sub_cmd} {filter_key}",
+            f"Enter a specific {filter_key} to filter by:",
+            f"{filter_key.upper()}",
+        )
+        return False
+
+    is_valid_input_func = inventory_host_func_mapper.get(filter_key)
+    if not is_valid_input_func(filter_value):
+        dispatcher.send_error(f"You've entered an invalid {filter_key.upper()}")
+        return CommandStatusChoices.STATUS_FAILED
+
+    hosts = ipfabric_api.find_host(filter_key, filter_value, get_user_snapshot(dispatcher))
+
+    dispatcher.send_blocks(
+        [
+            *dispatcher.command_response_header(
+                f"{BASE_CMD}",
+                f"{sub_cmd}",
+                [("Filter key", filter_key), ("Filter value", filter_value)],
+                "Host Inventory",
+                ipfabric_logo(dispatcher),
+            ),
+            dispatcher.markdown_block(f"{ipfabric_api.host_url}/inventory/hosts"),
+        ]
+    )
+
+    dispatcher.send_large_table(
+        ["Host IP", "VRF", "Host DNS", "Site", "Edges", "Gateways", "Access Points", "Host MAC", "Vendor", "VLAN"],
+        [
+            (
+                host.get("ip") or "(empty)",
+                host.get("vrf") or "(empty)",
+                host.get("dnsName") or "(empty)",
+                host.get("siteName") or "(empty)",
+                host.get("edges") or "(empty)",
+                host.get("gateways") or "(empty)",
+                host.get("accessPoints") or "(empty)",
+                host.get("mac") or "(empty)",
+                host.get("vendor") or "(empty)",
+                host.get("vlan") or "(empty)",
+            )
+            for host in hosts
+        ],
+    )
+    return True

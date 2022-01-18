@@ -6,7 +6,7 @@ import requests
 # Default IP Fabric API pagination limit
 DEFAULT_PAGE_LIMIT = 100
 
-logger = logging.getLogger("ipfabric")
+logger = logging.getLogger("rq.worker")
 
 
 class IpFabric:
@@ -28,6 +28,12 @@ class IpFabric:
         response = requests.request(method, self.host_url + url, json=payload, params=params, headers=self.headers)
         return response.json()
 
+    def get_response_raw(self, method, url, payload, params=None):
+        """Get request and return response dict."""
+        headers = {**self.headers}
+        headers["Accept"] = "*/*"
+        return requests.request(method, self.host_url + url, json=payload, params=params, headers=headers)
+
     def get_devices_info(self, snapshot_id="$last", limit=DEFAULT_PAGE_LIMIT):
         """Return Device info."""
         logger.debug("Received device list request")
@@ -40,6 +46,16 @@ class IpFabric:
             "snapshot": snapshot_id,
         }
         return self.get_response("/api/v1/tables/inventory/devices", payload)
+
+    def get_os_version(self):
+        """Return IP Fabric OS version info."""
+        logger.debug("Received OS version request")
+
+        payload = {}
+        response = self.get_response_json("GET", "/api/v1/os/version", payload)
+        os_version = float(response.get("version", "0.0").rpartition(".")[0])
+        logger.debug("Your IP Fabric OS version is: %s", os_version)
+        return os_version
 
     def get_device_inventory(self, search_key, search_value, snapshot_id="$last", limit=DEFAULT_PAGE_LIMIT):
         """Return Device info."""
@@ -115,6 +131,42 @@ class IpFabric:
         # no payload required
         payload = {}
         return self.get_response_json("GET", "/api/v1/graph/end-to-end-path", payload, params)
+
+    def get_pathlookup(
+        self, src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id
+    ):  # pylint: disable=too-many-arguments
+        """Return pathlookup simulation as PNG output. Requires v4 IP Fabric server."""
+        no_png_flags = ["no-dgw", "no-receiver", "no-source"]  # a path with these flags results in any empty PNG
+        payload = {
+            "snapshot": snapshot_id,
+            "parameters": {
+                "type": "pathLookup",
+                "pathLookupType": "unicast",
+                "protocol": protocol,
+                "startingPoint": src_ip,
+                "startingPort": src_port,
+                "destinationPoint": dst_ip,
+                "destinationPort": dst_port,
+                "groupBy": "siteName",
+                "networkMode": "true",
+                "securedPath": "false",
+            },
+        }
+        logger.debug(  # pylint: disable=logging-too-many-args
+            "Received end-to-end PNG path simulation request: ", payload
+        )
+
+        # no params required
+        params = {}
+
+        json_response = self.get_response_json("POST", "/api/v1/graphs", payload, params=params)
+        pathlookup = json_response.get("pathlookup", {})
+        png_response = self.get_response_raw("POST", "/api/v1/graphs/png", payload, params=params)
+
+        for flag in pathlookup.get("eventsSummary", {}).get("flags"):
+            if flag in no_png_flags:
+                return None
+        return png_response.content
 
     def get_interfaces_errors_info(self, device, snapshot_id="$last", limit=DEFAULT_PAGE_LIMIT):
         """Return bi-directional interface errors info."""
@@ -324,3 +376,64 @@ class IpFabric:
         }
 
         return self.get_response("/api/v1/tables/wireless/radio", payload)
+
+    def validate_version(self, operator_func, version):
+        """Validate the IP Fabric OS version."""
+        logger.debug("Validate IP Fabric OS version is %s %s", operator_func, version)
+
+        ipfabric_version = self.get_os_version()
+        return operator_func(ipfabric_version, version)
+
+    def get_host(self, search_key, search_value, snapshot_id="$last", limit=DEFAULT_PAGE_LIMIT):
+        """Return inventory host information."""
+        logger.debug("Received host inventory request - %s %s", search_key, search_value)
+
+        # columns and snapshot required
+        payload = {
+            "columns": [
+                "ip",
+                "vrf",
+                "dnsName",
+                "siteName",
+                "edges",
+                "gateways",
+                "accessPoints",
+                "mac",
+                "vendor",
+                "vlan",
+            ],
+            "filters": {search_key: ["eq", search_value]},
+            "pagination": {"limit": limit, "start": 0},
+            "snapshot": snapshot_id,
+        }
+        logger.debug("Requesting host inventory with payload: %s", payload)
+        return self.get_response("/api/v1/tables/addressing/hosts", payload)
+
+    def find_host(self, search_key, search_value, snapshot_id="$last", limit=DEFAULT_PAGE_LIMIT):
+        """Get and parse inventory host information."""
+        logger.debug("Received host inventory request - %s %s", search_key, search_value)
+
+        hosts = self.get_host(search_key, search_value, snapshot_id, limit)
+        logger.debug("Parsing hosts: %s", hosts)
+        parsed_hosts = []
+
+        for host in hosts:
+            parsed_edges = []
+            parsed_gws = []
+            parsed_aps = []
+
+            for edge in host.get("edges"):
+                parsed_edges.append(f"{edge.get('hostname', '')} ({edge.get('intName', '')})")
+
+            for gateway in host.get("gateways"):
+                parsed_gws.append(f"{gateway.get('hostname', '')} ({gateway.get('intName', '')})")
+
+            for access_point in host.get("accessPoints"):
+                parsed_aps.append(f"{access_point.get('hostname', '')} ({access_point.get('intName', '')})")
+
+            host["edges"] = ";".join(parsed_edges) if parsed_edges else ""
+            host["gateways"] = ";".join(parsed_gws) if parsed_gws else ""
+            host["accessPoints"] = ";".join(parsed_aps) if parsed_aps else ""
+
+            parsed_hosts.append(host)
+        return parsed_hosts
