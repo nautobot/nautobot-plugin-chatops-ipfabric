@@ -26,16 +26,18 @@ class IpFabric:
 
     def get_response_json(self, method, url, payload, params=None):
         """Get request and return response dict."""
-        response = requests.request(method, self.host_url + url, json=payload, params=params, headers=self.headers,
-                                    verify=self.verify)
+        response = requests.request(
+            method, self.host_url + url, json=payload, params=params, headers=self.headers, verify=self.verify
+        )
         return response.json()
 
     def get_response_raw(self, method, url, payload, params=None):
         """Get request and return response dict."""
         headers = {**self.headers}
         headers["Accept"] = "*/*"
-        return requests.request(method, self.host_url + url, json=payload, params=params, headers=headers,
-                                verify=self.verify)
+        return requests.request(
+            method, self.host_url + url, json=payload, params=params, headers=headers, verify=self.verify
+        )
 
     def get_devices_info(self, snapshot_id="$last", limit=DEFAULT_PAGE_LIMIT):
         """Return Device info."""
