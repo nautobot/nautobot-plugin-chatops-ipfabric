@@ -14,10 +14,11 @@ class IpFabric:
 
     EMPTY = "(empty)"
 
-    def __init__(self, host_url, token):
+    def __init__(self, host_url, token, verify=True):
         """Auth is contained in the 'X-API-Token' in the header."""
         self.headers = {"Accept": "application/json", "Content-Type": "application/json", "X-API-Token": token}
         self.host_url = host_url
+        self.verify = verify
 
     def get_response(self, url, payload, method="POST"):
         """Get request and return response dict."""
@@ -25,14 +26,18 @@ class IpFabric:
 
     def get_response_json(self, method, url, payload, params=None):
         """Get request and return response dict."""
-        response = requests.request(method, self.host_url + url, json=payload, params=params, headers=self.headers)
+        response = requests.request(
+            method, self.host_url + url, json=payload, params=params, headers=self.headers, verify=self.verify
+        )
         return response.json()
 
     def get_response_raw(self, method, url, payload, params=None):
         """Get request and return response dict."""
         headers = {**self.headers}
         headers["Accept"] = "*/*"
-        return requests.request(method, self.host_url + url, json=payload, params=params, headers=headers)
+        return requests.request(
+            method, self.host_url + url, json=payload, params=params, headers=headers, verify=self.verify
+        )
 
     def get_devices_info(self, snapshot_id="$last", limit=DEFAULT_PAGE_LIMIT):
         """Return Device info."""
