@@ -310,7 +310,7 @@ PLUGINS_CONFIG = {
     "nautobot_chatops_ipfabric": {
         "IPFABRIC_API_TOKEN": os.environ.get("IPFABRIC_API_TOKEN"),
         "IPFABRIC_HOST": os.environ.get("IPFABRIC_HOST"),
-        "IPFABRIC_VERIFY": os.environ.get("IPFABRIC_VERIFY", True),
+        "IPFABRIC_VERIFY": is_truthy(os.environ.get("IPFABRIC_VERIFY", True)),
     },
 }
 
