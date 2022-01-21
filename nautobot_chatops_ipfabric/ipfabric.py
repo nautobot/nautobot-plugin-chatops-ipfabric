@@ -108,7 +108,7 @@ class IpFabric:
 
         # no payload required
         response = self.get_response_json("GET", "/api/v1/snapshots", payload={})
-        snap_dict = dict()
+        snap_dict = {}
         for snapshot in response:
             if snapshot["state"] != "loaded":
                 continue
@@ -133,10 +133,9 @@ class IpFabric:
         # end-to-end-path don't support $last as snapshot_id, getting the actual ID
         loaded_snapshots = self.get_snapshots()
         if snapshot_id not in loaded_snapshots:
-            logger.debug(f"Invalid snapshot_id: {snapshot_id}")
-            return dict()
-        else:
-            snapshot_id = loaded_snapshots[snapshot_id].snapshot_id
+            logger.debug("Invalid snapshot_id: %s", snapshot_id)
+            return {}
+        snapshot_id = loaded_snapshots[snapshot_id].snapshot_id
 
         params = {
             "source": src_ip,
