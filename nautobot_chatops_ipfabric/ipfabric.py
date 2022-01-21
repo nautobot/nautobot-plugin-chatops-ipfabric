@@ -113,6 +113,7 @@ class IpFabric:
             if snapshot["state"] != "loaded":
                 continue
             snap = Snapshot(**snapshot)
+            snap_dict[snap.snapshot_id] = snap
             if "$lastLocked" not in snap_dict and snap.locked:
                 snap.last_locked = True
                 snap_dict["$lastLocked"] = snap
@@ -123,7 +124,6 @@ class IpFabric:
             if "$prev" not in snap_dict:
                 snap.prev = True
                 snap_dict["$prev"] = snap
-            snap_dict[snap.snapshot_id] = snap
         return snap_dict
 
     def get_path_simulation(

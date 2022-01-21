@@ -5,6 +5,7 @@ from datetime import datetime
 
 class Snapshot:
     """IP Fabric Snapshot model."""
+
     def __init__(self, **kwargs):
         """Initialize Snapshot class."""
         self.name = kwargs.get("name", None)
