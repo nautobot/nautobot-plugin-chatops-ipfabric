@@ -17,7 +17,9 @@ from .context import get_context, set_context
 BASE_CMD = "ipfabric"
 IPFABRIC_LOGO_PATH = "ipfabric/ipfabric_logo.png"
 IPFABRIC_LOGO_ALT = "IPFabric Logo"
-DEFAULT_SNAPSHOT = "$last"
+LAST = "$last"
+PREV = "$prev"
+LAST_LOCKED = "$lastLocked"
 
 logger = logging.getLogger("rq.worker")
 
@@ -65,35 +67,30 @@ def prompt_device_input(action_id, help_text, dispatcher, choices=None):
 def prompt_snapshot_id(action_id, help_text, dispatcher, choices=None):
     """Prompt the user for snapshot ID."""
     choices = list()
-    default = None
-    named_snaps = [DEFAULT_SNAPSHOT, "$prev", "$lastLocked"]
+    default = (LAST, LAST)
+    named_snap_ids = set()
     snapshots = ipfabric_api.get_snapshots()
 
-    for name in named_snaps:
-        if name in snapshots:
-            snapshot = snapshots[name]
-            desc = (
-                f'{name}: {snapshot["snapshot_name"]} - {snapshot["time"].ctime()}'
-                if snapshot["snapshot_name"]
-                else f'{name}: {snapshot["time"].ctime()} - {snapshot["snapshot_id"]}'
-            )
-            if name == DEFAULT_SNAPSHOT:
-                default = (desc, snapshot["snapshot_id"])
-            else:
-                choices.append((desc, snapshot["snapshot_id"]))
-            snapshots.pop(snapshot["snapshot_id"], None)
-            snapshots.pop(name, None)
+    if LAST in snapshots:
+        default = (snapshots[LAST].description, snapshots[LAST].snapshot_id)
+        named_snap_ids.add(snapshots[LAST].snapshot_id)
+        choices.append(default)
+        snapshots.pop(snapshots[LAST].snapshot_id, None)
+    if PREV in snapshots:
+        choices.append((snapshots[PREV].description, snapshots[PREV].snapshot_id))
+        named_snap_ids.add(snapshots[PREV].snapshot_id)
+        snapshots.pop(snapshots[PREV].snapshot_id, None)
+    if LAST_LOCKED in snapshots:
+        if snapshots[LAST_LOCKED].snapshot_id not in named_snap_ids:
+            choices.append((snapshots[LAST_LOCKED].description, snapshots[LAST_LOCKED].snapshot_id))
+        snapshots.pop(snapshots[LAST_LOCKED].snapshot_id, None)
+
+    [snapshots.pop(name, None) for name in [LAST, PREV, LAST_LOCKED]]
 
     for snapshot_id, snapshot in snapshots.items():
-        desc = (
-            f'{snapshot["snapshot_name"]} - {snapshot["time"].ctime()}'
-            if snapshot["snapshot_name"]
-            else f'{snapshot["time"].ctime()} - {snapshot_id}'
-        )
-        choices.append((desc, snapshot_id))
-    return dispatcher.prompt_from_menu(
-        action_id, help_text, choices, default=default or (DEFAULT_SNAPSHOT, DEFAULT_SNAPSHOT), confirm=True
-    )
+        choices.append((snapshot.description, snapshot_id))
+
+    return dispatcher.prompt_from_menu(action_id, help_text, choices, default=default)
 
 
 def prompt_inventory_filter_values(action_id, help_text, dispatcher, filter_key, choices=None):
@@ -130,7 +127,7 @@ def get_user_snapshot(dispatcher):
     context = get_context(dispatcher.context["user_id"])
     snapshot = context.get("snapshot")
     if not snapshot:
-        snapshot = ipfabric_api.get_snapshots()[DEFAULT_SNAPSHOT]["snapshot_id"]
+        snapshot = ipfabric_api.get_snapshots()[LAST].snapshot_id
         set_context(dispatcher.context["user_id"], {"snapshot": snapshot})
 
     return snapshot
@@ -145,11 +142,11 @@ def set_snapshot(dispatcher, snapshot=None):
 
     user = dispatcher.context["user_id"]
     snapshots = ipfabric_api.get_snapshots()
-    dispatcher.send_markdown(f"<@{user}>, selected {snapshot} available *{snapshots.keys()}* ")
+
     if snapshot not in snapshots:
         dispatcher.send_markdown(f"<@{user}>, snapshot *{snapshot}* does not exist in IP Fabric.")
         return False
-    snapshot_id = snapshots[snapshot]["snapshot_id"]
+    snapshot_id = snapshots[snapshot].snapshot_id
     set_context(user, {"snapshot": snapshot_id})
 
     dispatcher.send_markdown(
