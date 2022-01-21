@@ -1,4 +1,4 @@
-"""IP Fabric data models"""
+"""IP Fabric data models."""
 
 from datetime import datetime
 
