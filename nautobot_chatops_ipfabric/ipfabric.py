@@ -7,6 +7,8 @@ from .models import Snapshot
 # Default IP Fabric API pagination limit
 DEFAULT_PAGE_LIMIT = 100
 LAST = "$last"
+PREV = "$prev"
+LAST_LOCKED = "$lastLocked"
 
 logger = logging.getLogger("rq.worker")
 
@@ -125,6 +127,32 @@ class IpFabric:
                 snap.prev = True
                 snap_dict["$prev"] = snap
         return snap_dict
+
+    @property
+    def snapshots(self):
+        choices = [(LAST, LAST)]
+        named_snap_ids = set()
+        snapshots = self.get_snapshots()
+
+        if LAST in snapshots:
+            named_snap_ids.add(snapshots[LAST].snapshot_id)
+            choices[0] = (snapshots[LAST].description, snapshots[LAST].snapshot_id)
+            snapshots.pop(snapshots[LAST].snapshot_id, None)
+            snapshots.pop(LAST, None)
+        if PREV in snapshots:
+            choices.append((snapshots[PREV].description, snapshots[PREV].snapshot_id))
+            named_snap_ids.add(snapshots[PREV].snapshot_id)
+            snapshots.pop(snapshots[PREV].snapshot_id, None)
+            snapshots.pop(PREV, None)
+        if LAST_LOCKED in snapshots:
+            if snapshots[LAST_LOCKED].snapshot_id not in named_snap_ids:
+                choices.append((snapshots[LAST_LOCKED].description, snapshots[LAST_LOCKED].snapshot_id))
+            snapshots.pop(snapshots[LAST_LOCKED].snapshot_id, None)
+            snapshots.pop(LAST_LOCKED, None)
+
+        for snapshot_id, snapshot in snapshots.items():
+            choices.append((snapshot.description, snapshot_id))
+        return choices
 
     def get_path_simulation(
         self, src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id

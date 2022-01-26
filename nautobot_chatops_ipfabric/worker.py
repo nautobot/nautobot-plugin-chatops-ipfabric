@@ -66,30 +66,8 @@ def prompt_device_input(action_id, help_text, dispatcher, choices=None):
 
 def prompt_snapshot_id(action_id, help_text, dispatcher, choices=None):
     """Prompt the user for snapshot ID."""
-    choices = []
-    default = (LAST, LAST)
-    named_snap_ids = set()
-    snapshots = ipfabric_api.get_snapshots()
-
-    if LAST in snapshots:
-        default = (snapshots[LAST].description, snapshots[LAST].snapshot_id)
-        named_snap_ids.add(snapshots[LAST].snapshot_id)
-        choices.append(default)
-        snapshots.pop(snapshots[LAST].snapshot_id, None)
-        snapshots.pop(LAST, None)
-    if PREV in snapshots:
-        choices.append((snapshots[PREV].description, snapshots[PREV].snapshot_id))
-        named_snap_ids.add(snapshots[PREV].snapshot_id)
-        snapshots.pop(snapshots[PREV].snapshot_id, None)
-        snapshots.pop(PREV, None)
-    if LAST_LOCKED in snapshots:
-        if snapshots[LAST_LOCKED].snapshot_id not in named_snap_ids:
-            choices.append((snapshots[LAST_LOCKED].description, snapshots[LAST_LOCKED].snapshot_id))
-        snapshots.pop(snapshots[LAST_LOCKED].snapshot_id, None)
-        snapshots.pop(LAST_LOCKED, None)
-
-    for snapshot_id, snapshot in snapshots.items():
-        choices.append((snapshot.description, snapshot_id))
+    choices = ipfabric_api.snapshots
+    default = choices[0]
 
     return dispatcher.prompt_from_menu(action_id, help_text, choices, default=default)
 
