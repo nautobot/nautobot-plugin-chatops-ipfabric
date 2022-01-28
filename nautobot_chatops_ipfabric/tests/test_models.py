@@ -17,6 +17,6 @@ class TestIPFabricModels(unittest.TestCase):
             "tsStart": 1642607756999,
             "id": "1980e282-df63-4b09-b7fb-701a966040f3",
         }
-        snap = models.Snapshot(**snap_json)
+        snap = ipfabric_models.Snapshot(**snap_json)
         self.assertEqual(hash(snap), hash(snap_json["id"]))
         self.assertIn(snap_json["id"], str(snap))
