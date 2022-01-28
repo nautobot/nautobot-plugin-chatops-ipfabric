@@ -130,6 +130,7 @@ class IpFabric:
 
     @property
     def snapshots(self):
+        """This gets all Snapshots, places them in Objects, and returns a dict {ID: Snapshot}"""
         choices = [(LAST, LAST)]
         named_snap_ids = set()
         snapshots = self.get_snapshots()
