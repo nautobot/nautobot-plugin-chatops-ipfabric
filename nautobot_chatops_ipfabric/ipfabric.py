@@ -13,7 +13,7 @@ LAST_LOCKED = "$lastLocked"
 logger = logging.getLogger("rq.worker")
 
 
-# pylint disable=too-many-public-methods
+# pylint: disable=R0904
 class IpFabric:
     """IpFabric will contain all the necessary API methods."""
 
