@@ -1,7 +1,7 @@
 """Test IP Fabric models."""
 import unittest
 
-from nautobot_chatops_ipfabric import models
+from nautobot_chatops_ipfabric import ipfabric_models
 
 
 class TestIPFabricModels(unittest.TestCase):

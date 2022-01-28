@@ -2,7 +2,7 @@
 
 import logging
 import requests
-from .models import Snapshot
+from .ipfabric_models import Snapshot
 
 # Default IP Fabric API pagination limit
 DEFAULT_PAGE_LIMIT = 100
@@ -116,16 +116,16 @@ class IpFabric:
                 continue
             snap = Snapshot(**snapshot)
             snap_dict[snap.snapshot_id] = snap
-            if "$lastLocked" not in snap_dict and snap.locked:
+            if LAST_LOCKED not in snap_dict and snap.locked:
                 snap.last_locked = True
-                snap_dict["$lastLocked"] = snap
+                snap_dict[LAST_LOCKED] = snap
             if LAST not in snap_dict:
                 snap.last = True
                 snap_dict[LAST] = snap
                 continue
-            if "$prev" not in snap_dict:
+            if PREV not in snap_dict:
                 snap.prev = True
-                snap_dict["$prev"] = snap
+                snap_dict[PREV] = snap
         return snap_dict
 
     @property

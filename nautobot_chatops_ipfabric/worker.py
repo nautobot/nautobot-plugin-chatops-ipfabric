@@ -11,15 +11,13 @@ from nautobot_chatops.choices import CommandStatusChoices
 from nautobot_chatops.workers import subcommand_of, handle_subcommands
 from netutils.ip import is_ip
 from netutils.mac import is_valid_mac
-from .ipfabric import IpFabric
+from .ipfabric import IpFabric, LAST
 from .context import get_context, set_context
 
 BASE_CMD = "ipfabric"
 IPFABRIC_LOGO_PATH = "ipfabric/ipfabric_logo.png"
 IPFABRIC_LOGO_ALT = "IPFabric Logo"
-LAST = "$last"
-PREV = "$prev"
-LAST_LOCKED = "$lastLocked"
+
 
 logger = logging.getLogger("rq.worker")
 
