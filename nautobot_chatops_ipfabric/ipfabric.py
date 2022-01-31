@@ -2,6 +2,7 @@
 
 import logging
 import requests
+from operator import ge
 
 # Default IP Fabric API pagination limit
 DEFAULT_PAGE_LIMIT = 100
@@ -142,21 +143,48 @@ class IpFabric:
     ):  # pylint: disable=too-many-arguments
         """Return pathlookup simulation as PNG output. Requires v4 IP Fabric server."""
         no_png_flags = ["no-dgw", "no-receiver", "no-source"]  # a path with these flags results in any empty PNG
-        payload = {
-            "snapshot": snapshot_id,
-            "parameters": {
-                "type": "pathLookup",
-                "pathLookupType": "unicast",
-                "protocol": protocol,
-                "startingPoint": src_ip,
-                "startingPort": src_port,
-                "destinationPoint": dst_ip,
-                "destinationPort": dst_port,
-                "groupBy": "siteName",
-                "networkMode": "true",
-                "securedPath": "false",
-            },
-        }
+        if self.validate_version(ge, 4.3):
+            payload = {
+                "snapshot": snapshot_id,
+                "parameters": {
+                    "type": "pathLookup",
+                    "pathLookupType": "unicast",
+                    "startingPoint": src_ip,
+                    "destinationPoint": dst_ip,
+                    "groupBy": "siteName",
+                    "networkMode": "true",
+                    "securedPath": "false",
+                    "otherOptions": {"applications": ".*", "tracked": False},
+                    "firstHopAlgorithm": {"type": "automatic"},
+                    "srcRegions": ".*",
+                    "dstRegions": ".*",
+                    "protocol": protocol,
+                    "ttl": 128,
+                    "fragmentOffset": 0,
+                },
+            }
+            if protocol in ["udp", "tcp"]:
+                payload["l4Options"] = {"dstPorts": str(dst_port), "srcPorts": str(src_port)}
+            if protocol == "tcp":
+                payload["l4Options"]["flags"] = []
+            if protocol == "icmp":
+                payload["l4Options"] = {"type": 8, "code": 0}
+        else:
+            payload = {
+                "snapshot": snapshot_id,
+                "parameters": {
+                    "type": "pathLookup",
+                    "pathLookupType": "unicast",
+                    "protocol": protocol,
+                    "startingPoint": src_ip,
+                    "startingPort": src_port,
+                    "destinationPoint": dst_ip,
+                    "destinationPort": dst_port,
+                    "groupBy": "siteName",
+                    "networkMode": "true",
+                    "securedPath": "false",
+                },
+            }
         logger.debug(  # pylint: disable=logging-too-many-args
             "Received end-to-end PNG path simulation request: ", payload
         )
