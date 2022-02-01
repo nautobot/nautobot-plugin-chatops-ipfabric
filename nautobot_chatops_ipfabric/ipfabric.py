@@ -1,8 +1,10 @@
 """IPFabric API integration."""
 
 import logging
-import requests
 from operator import ge
+
+import requests
+
 from .ipfabric_models import Snapshot
 
 # Default IP Fabric API pagination limit
