@@ -13,6 +13,16 @@ LAST_LOCKED = "$lastLocked"
 logger = logging.getLogger("rq.worker")
 
 
+def create_regex(string: str) -> str:
+    regex = "^"
+    for i in string.upper():
+        if i.isalpha():
+            regex += f"[{i}{i.lower()}]"
+        else:
+            regex += i
+    return regex + "$"
+
+
 # pylint: disable=R0904
 class IpFabric:
     """IpFabric will contain all the necessary API methods."""
@@ -97,7 +107,7 @@ class IpFabric:
         # columns and snapshot required
         payload = {
             "columns": ["intName", "inBytes", "outBytes"],
-            "filters": {"hostname": ["eq", device]},
+            "filters": {"hostname": ["reg", create_regex(device)]},
             "pagination": {"limit": limit, "start": 0},
             "snapshot": snapshot_id,
             "sort": {"order": "desc", "column": "intName"},
@@ -226,7 +236,7 @@ class IpFabric:
         # columns and snapshot required
         payload = {
             "columns": ["intName", "errPktsPct", "errRate"],
-            "filters": {"hostname": ["eq", device]},
+            "filters": {"hostname": ["reg", create_regex(device)]},
             "pagination": {"limit": limit, "start": 0},
             "snapshot": snapshot_id,
             "sort": {"order": "desc", "column": "intName"},
@@ -241,7 +251,7 @@ class IpFabric:
         # columns and snapshot required
         payload = {
             "columns": ["intName", "dropsPktsPct", "dropsRate"],
-            "filters": {"hostname": ["eq", device]},
+            "filters": {"hostname": ["reg", create_regex(device)]},
             "pagination": {"limit": limit, "start": 0},
             "snapshot": snapshot_id,
             "sort": {"order": "desc", "column": "intName"},
@@ -267,12 +277,12 @@ class IpFabric:
                 "totalReceivedPrefixes",
             ],
             "snapshot": snapshot_id,
-            "filters": {"hostname": ["eq", device]},
+            "filters": {"hostname": ["reg", create_regex(device)]},
             "pagination": {"limit": limit, "start": 0},
         }
 
         if state != "any":
-            payload["filters"] = {"and": [{"hostname": ["eq", device]}, {"state": ["eq", state]}]}
+            payload["filters"] = {"and": [{"hostname": ["reg", create_regex(device)]}, {"state": ["eq", state]}]}
         return self.get_response("/api/v1/tables/routing/protocols/bgp/neighbors", payload)
 
     def get_parsed_path_simulation(
