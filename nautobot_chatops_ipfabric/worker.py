@@ -546,9 +546,7 @@ def routing(dispatcher, device=None, protocol=None, filter_opt=None):
     """Get routing information for a device."""
     snapshot_id = get_user_snapshot(dispatcher)
     logger.debug("Getting devices")
-    devices = [
-        (device["hostname"], device["hostname"].lower()) for device in ipfabric_api.get_devices_info(snapshot_id)
-    ]
+    devices = [(device["hostname"], device["hostname"]) for device in ipfabric_api.get_devices_info(snapshot_id)]
 
     if not devices:
         dispatcher.send_blocks(
