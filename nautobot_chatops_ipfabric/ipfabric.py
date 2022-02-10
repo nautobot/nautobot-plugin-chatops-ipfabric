@@ -2,22 +2,39 @@
 
 import logging
 import requests
+from .ipfabric_models import Snapshot
 
 # Default IP Fabric API pagination limit
 DEFAULT_PAGE_LIMIT = 100
+LAST = "$last"
+PREV = "$prev"
+LAST_LOCKED = "$lastLocked"
 
 logger = logging.getLogger("rq.worker")
 
 
+def create_regex(string: str) -> str:
+    """Takes a string and returns a case insensitive regex."""
+    regex = "^"
+    for i in string.upper():
+        if i.isalpha():
+            regex += f"[{i}{i.lower()}]"
+        else:
+            regex += i
+    return regex + "$"
+
+
+# pylint: disable=R0904
 class IpFabric:
     """IpFabric will contain all the necessary API methods."""
 
     EMPTY = "(empty)"
 
-    def __init__(self, host_url, token):
+    def __init__(self, host_url, token, verify=True):
         """Auth is contained in the 'X-API-Token' in the header."""
         self.headers = {"Accept": "application/json", "Content-Type": "application/json", "X-API-Token": token}
         self.host_url = host_url
+        self.verify = verify
 
     def get_response(self, url, payload, method="POST"):
         """Get request and return response dict."""
@@ -25,16 +42,19 @@ class IpFabric:
 
     def get_response_json(self, method, url, payload, params=None):
         """Get request and return response dict."""
-        response = requests.request(method, self.host_url + url, json=payload, params=params, headers=self.headers)
+        response = requests.request(
+            method, self.host_url + url, json=payload, params=params, headers=self.headers, verify=self.verify
+        )
         return response.json()
 
     def get_response_raw(self, method, url, payload, params=None):
         """Get request and return response dict."""
-        headers = {**self.headers}
-        headers["Accept"] = "*/*"
-        return requests.request(method, self.host_url + url, json=payload, params=params, headers=headers)
+        headers = {**self.headers, "Accept": "*/*"}
+        return requests.request(
+            method, self.host_url + url, json=payload, params=params, headers=headers, verify=self.verify
+        )
 
-    def get_devices_info(self, snapshot_id="$last", limit=DEFAULT_PAGE_LIMIT):
+    def get_devices_info(self, snapshot_id=LAST, limit=DEFAULT_PAGE_LIMIT):
         """Return Device info."""
         logger.debug("Received device list request")
 
@@ -57,7 +77,7 @@ class IpFabric:
         logger.debug("Your IP Fabric OS version is: %s", os_version)
         return os_version
 
-    def get_device_inventory(self, search_key, search_value, snapshot_id="$last", limit=DEFAULT_PAGE_LIMIT):
+    def get_device_inventory(self, search_key, search_value, snapshot_id=LAST, limit=DEFAULT_PAGE_LIMIT):
         """Return Device info."""
         logger.debug("Received device inventory request")
 
@@ -81,14 +101,14 @@ class IpFabric:
         logger.debug("Requesting inventory with payload: %s", payload)
         return self.get_response("/api/v1/tables/inventory/devices", payload)
 
-    def get_interfaces_load_info(self, device, snapshot_id="$last", limit=DEFAULT_PAGE_LIMIT):
+    def get_interfaces_load_info(self, device, snapshot_id=LAST, limit=DEFAULT_PAGE_LIMIT):
         """Return Interface load info."""
         logger.debug("Received interface counters request")
 
         # columns and snapshot required
         payload = {
             "columns": ["intName", "inBytes", "outBytes"],
-            "filters": {"hostname": ["eq", device]},
+            "filters": {"hostname": ["reg", create_regex(device)]},
             "pagination": {"limit": limit, "start": 0},
             "snapshot": snapshot_id,
             "sort": {"order": "desc", "column": "intName"},
@@ -101,20 +121,62 @@ class IpFabric:
         logger.debug("Received snapshot request")
 
         # no payload required
-        payload = {}
-        return self.get_response_json("GET", "/api/v1/snapshots", payload)
+        response = self.get_response_json("GET", "/api/v1/snapshots", payload={})
+        snap_dict = {}
+        for snapshot in response:
+            if snapshot["state"] != "loaded":
+                continue
+            snap = Snapshot(**snapshot)
+            snap_dict[snap.snapshot_id] = snap
+            if LAST_LOCKED not in snap_dict and snap.locked:
+                snap.last_locked = True
+                snap_dict[LAST_LOCKED] = snap
+            if LAST not in snap_dict:
+                snap.last = True
+                snap_dict[LAST] = snap
+                continue
+            if PREV not in snap_dict:
+                snap.prev = True
+                snap_dict[PREV] = snap
+        return snap_dict
+
+    @property
+    def snapshots(self):
+        """This gets all Snapshots, places them in Objects, and returns a dict {ID: Snapshot}."""
+        choices = [(LAST, LAST)]
+        named_snap_ids = set()
+        snapshots = self.get_snapshots()
+
+        if LAST in snapshots:
+            named_snap_ids.add(snapshots[LAST].snapshot_id)
+            choices[0] = (snapshots[LAST].description, snapshots[LAST].snapshot_id)
+            snapshots.pop(snapshots[LAST].snapshot_id, None)
+            snapshots.pop(LAST, None)
+        if PREV in snapshots:
+            choices.append((snapshots[PREV].description, snapshots[PREV].snapshot_id))
+            named_snap_ids.add(snapshots[PREV].snapshot_id)
+            snapshots.pop(snapshots[PREV].snapshot_id, None)
+            snapshots.pop(PREV, None)
+        if LAST_LOCKED in snapshots:
+            if snapshots[LAST_LOCKED].snapshot_id not in named_snap_ids:
+                choices.append((snapshots[LAST_LOCKED].description, snapshots[LAST_LOCKED].snapshot_id))
+            snapshots.pop(snapshots[LAST_LOCKED].snapshot_id, None)
+            snapshots.pop(LAST_LOCKED, None)
+
+        for snapshot_id, snapshot in snapshots.items():
+            choices.append((snapshot.description, snapshot_id))
+        return choices
 
     def get_path_simulation(
         self, src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id
     ):  # pylint: disable=too-many-arguments
         """Return End to End Path Simulation."""
         # end-to-end-path don't support $last as snapshot_id, getting the actual ID
-        if snapshot_id == "$last":
-            loaded_snapshots = [snap_id["id"] for snap_id in self.get_snapshots() if snap_id["state"] == "loaded"]
-            if not loaded_snapshots:
-                return []
-
-            snapshot_id = loaded_snapshots[-1]
+        loaded_snapshots = self.get_snapshots()
+        if snapshot_id not in loaded_snapshots:
+            logger.debug("Invalid snapshot_id: %s", snapshot_id)
+            return {}
+        snapshot_id = loaded_snapshots[snapshot_id].snapshot_id
 
         params = {
             "source": src_ip,
@@ -168,14 +230,14 @@ class IpFabric:
                 return None
         return png_response.content
 
-    def get_interfaces_errors_info(self, device, snapshot_id="$last", limit=DEFAULT_PAGE_LIMIT):
+    def get_interfaces_errors_info(self, device, snapshot_id=LAST, limit=DEFAULT_PAGE_LIMIT):
         """Return bi-directional interface errors info."""
         logger.debug("Received interface error counters request")
 
         # columns and snapshot required
         payload = {
             "columns": ["intName", "errPktsPct", "errRate"],
-            "filters": {"hostname": ["eq", device]},
+            "filters": {"hostname": ["reg", create_regex(device)]},
             "pagination": {"limit": limit, "start": 0},
             "snapshot": snapshot_id,
             "sort": {"order": "desc", "column": "intName"},
@@ -183,14 +245,14 @@ class IpFabric:
 
         return self.get_response("/api/v1/tables/interfaces/errors/bidirectional", payload)
 
-    def get_interfaces_drops_info(self, device, snapshot_id="$last", limit=DEFAULT_PAGE_LIMIT):
+    def get_interfaces_drops_info(self, device, snapshot_id=LAST, limit=DEFAULT_PAGE_LIMIT):
         """Return interface drops info."""
         logger.debug("Received interface drop counters request")
 
         # columns and snapshot required
         payload = {
             "columns": ["intName", "dropsPktsPct", "dropsRate"],
-            "filters": {"hostname": ["eq", device]},
+            "filters": {"hostname": ["reg", create_regex(device)]},
             "pagination": {"limit": limit, "start": 0},
             "snapshot": snapshot_id,
             "sort": {"order": "desc", "column": "intName"},
@@ -198,7 +260,7 @@ class IpFabric:
 
         return self.get_response("/api/v1/tables/interfaces/drops/bidirectional", payload)
 
-    def get_bgp_neighbors(self, device, state, snapshot_id="$last", limit=DEFAULT_PAGE_LIMIT):
+    def get_bgp_neighbors(self, device, state, snapshot_id=LAST, limit=DEFAULT_PAGE_LIMIT):
         """Retrieve BGP neighbors in IP Fabric for a specific device."""
         logger.debug("Received BGP neighbor request")
 
@@ -216,16 +278,16 @@ class IpFabric:
                 "totalReceivedPrefixes",
             ],
             "snapshot": snapshot_id,
-            "filters": {"hostname": ["eq", device]},
+            "filters": {"hostname": ["reg", create_regex(device)]},
             "pagination": {"limit": limit, "start": 0},
         }
 
         if state != "any":
-            payload["filters"] = {"and": [{"hostname": ["eq", device]}, {"state": ["eq", state]}]}
+            payload["filters"] = {"and": [{"hostname": ["reg", create_regex(device)]}, {"state": ["eq", state]}]}
         return self.get_response("/api/v1/tables/routing/protocols/bgp/neighbors", payload)
 
     def get_parsed_path_simulation(
-        self, src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id="$last"
+        self, src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id=LAST
     ):  # pylint: disable=too-many-arguments, too-many-locals
         """Path Simulation from source to destination IP.
 
@@ -298,7 +360,7 @@ class IpFabric:
         return path
 
     def get_src_dst_endpoint(
-        self, src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id="$last"
+        self, src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id=LAST
     ):  # pylint: disable=too-many-arguments, too-many-locals
         """Get the source/destination interface and source/destination node for the path.
 
@@ -315,9 +377,7 @@ class IpFabric:
         """
         response = self.get_path_simulation(src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id)
         graph = response.get("graph", {})
-        endpoints = {}
-        endpoints["src"] = "Unknown"
-        endpoints["dst"] = "Unknown"
+        endpoints = {"src": "Unknown", "dst": "Unknown"}
 
         # ipfabric returns the source of the path as the last element in the nodes list
         for idx, node in enumerate(graph.get("nodes", [])[::-1]):
@@ -331,7 +391,7 @@ class IpFabric:
                     endpoints["dst"] = f"{dst_intf} -- {node.get('hostname')}"
         return endpoints
 
-    def get_wireless_clients(self, ssid=None, snapshot_id="$last", limit=DEFAULT_PAGE_LIMIT):
+    def get_wireless_clients(self, ssid=None, snapshot_id=LAST, limit=DEFAULT_PAGE_LIMIT):
         """Get details of wireless clients associated with access points."""
         logger.debug("Received wireless client request")
 
@@ -357,7 +417,7 @@ class IpFabric:
 
         return self.get_response("/api/v1/tables/wireless/clients", payload)
 
-    def get_wireless_ssids(self, snapshot_id="$last", limit=DEFAULT_PAGE_LIMIT):
+    def get_wireless_ssids(self, snapshot_id=LAST, limit=DEFAULT_PAGE_LIMIT):
         """Get details of wireless SSIDs."""
         logger.debug("Received wireless SSID request")
 
@@ -384,7 +444,7 @@ class IpFabric:
         ipfabric_version = self.get_os_version()
         return operator_func(ipfabric_version, version)
 
-    def get_host(self, search_key, search_value, snapshot_id="$last", limit=DEFAULT_PAGE_LIMIT):
+    def get_host(self, search_key, search_value, snapshot_id=LAST, limit=DEFAULT_PAGE_LIMIT):
         """Return inventory host information."""
         logger.debug("Received host inventory request - %s %s", search_key, search_value)
 
@@ -409,7 +469,7 @@ class IpFabric:
         logger.debug("Requesting host inventory with payload: %s", payload)
         return self.get_response("/api/v1/tables/addressing/hosts", payload)
 
-    def find_host(self, search_key, search_value, snapshot_id="$last", limit=DEFAULT_PAGE_LIMIT):
+    def find_host(self, search_key, search_value, snapshot_id=LAST, limit=DEFAULT_PAGE_LIMIT):
         """Get and parse inventory host information."""
         logger.debug("Received host inventory request - %s %s", search_key, search_value)
 

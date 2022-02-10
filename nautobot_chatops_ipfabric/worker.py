@@ -11,18 +11,20 @@ from nautobot_chatops.choices import CommandStatusChoices
 from nautobot_chatops.workers import subcommand_of, handle_subcommands
 from netutils.ip import is_ip
 from netutils.mac import is_valid_mac
-from .ipfabric import IpFabric
+from .ipfabric import IpFabric, LAST
 from .context import get_context, set_context
 
 BASE_CMD = "ipfabric"
 IPFABRIC_LOGO_PATH = "ipfabric/ipfabric_logo.png"
 IPFABRIC_LOGO_ALT = "IPFabric Logo"
 
+
 logger = logging.getLogger("rq.worker")
 
 ipfabric_api = IpFabric(
     host_url=settings.PLUGINS_CONFIG["nautobot_chatops_ipfabric"].get("IPFABRIC_HOST"),
     token=settings.PLUGINS_CONFIG["nautobot_chatops_ipfabric"].get("IPFABRIC_API_TOKEN"),
+    verify=settings.PLUGINS_CONFIG["nautobot_chatops_ipfabric"].get("IPFABRIC_VERIFY"),
 )
 
 inventory_field_mapping = {
@@ -62,14 +64,10 @@ def prompt_device_input(action_id, help_text, dispatcher, choices=None):
 
 def prompt_snapshot_id(action_id, help_text, dispatcher, choices=None):
     """Prompt the user for snapshot ID."""
-    snapshots = []
-    for snapshot in ipfabric_api.get_snapshots():
-        if snapshot["state"] == "loaded":
-            snapshot_id = snapshot["id"]
-            snapshot_name = snapshot["name"] or snapshot_id
-            snapshots.append((snapshot_name, snapshot_id))
-    choices = snapshots + [("$last", "$last")]
-    return dispatcher.prompt_from_menu(action_id, help_text, choices, default=("$last", "$last"))
+    choices = ipfabric_api.snapshots
+    default = choices[0]
+
+    return dispatcher.prompt_from_menu(action_id, help_text, choices, default=default)
 
 
 def prompt_inventory_filter_values(action_id, help_text, dispatcher, filter_key, choices=None):
@@ -106,7 +104,7 @@ def get_user_snapshot(dispatcher):
     context = get_context(dispatcher.context["user_id"])
     snapshot = context.get("snapshot")
     if not snapshot:
-        snapshot = "$last"
+        snapshot = ipfabric_api.get_snapshots()[LAST].snapshot_id
         set_context(dispatcher.context["user_id"], {"snapshot": snapshot})
 
     return snapshot
@@ -120,14 +118,16 @@ def set_snapshot(dispatcher, snapshot=None):
         return False
 
     user = dispatcher.context["user_id"]
-    snapshots = [snapshot.get("id", "") for snapshot in ipfabric_api.get_snapshots()]
-    if snapshot not in snapshots and snapshot != "$last":
+    snapshots = ipfabric_api.get_snapshots()
+
+    if snapshot not in snapshots:
         dispatcher.send_markdown(f"<@{user}>, snapshot *{snapshot}* does not exist in IP Fabric.")
         return False
-    set_context(user, {"snapshot": snapshot})
+    snapshot_id = snapshots[snapshot].snapshot_id
+    set_context(user, {"snapshot": snapshot_id})
 
     dispatcher.send_markdown(
-        f"<@{user}>, snapshot *{snapshot}* is now used as the default for the subsequent commands."
+        f"<@{user}>, snapshot *{snapshot_id}* is now used as the default for the subsequent commands."
     )
     return True
 
@@ -546,9 +546,7 @@ def routing(dispatcher, device=None, protocol=None, filter_opt=None):
     """Get routing information for a device."""
     snapshot_id = get_user_snapshot(dispatcher)
     logger.debug("Getting devices")
-    devices = [
-        (device["hostname"], device["hostname"].lower()) for device in ipfabric_api.get_devices_info(snapshot_id)
-    ]
+    devices = [(device["hostname"], device["hostname"]) for device in ipfabric_api.get_devices_info(snapshot_id)]
 
     if not devices:
         dispatcher.send_blocks(

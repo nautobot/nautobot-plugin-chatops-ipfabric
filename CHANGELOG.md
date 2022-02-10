@@ -1,3 +1,9 @@
+## v1.1.1 - 2022-02-10
+
+### Added
+
+- #67 - Improved snapshot handling and added lock representation in snapshot select menu.
+- #76 - Added case-insensitive search capability for hostnames.
 
 ## v1.1.0 - 2022-01-18
 

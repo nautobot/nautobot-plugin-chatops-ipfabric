@@ -66,6 +66,7 @@ PLUGINS_CONFIG = {
   "nautobot_chatops_ipfabric": {
       "IPFABRIC_API_TOKEN": os.environ.get("IPFABRIC_API_TOKEN"),
       "IPFABRIC_HOST": os.environ.get("IPFABRIC_HOST"),
+      "IPFABRIC_VERIFY": os.environ.get("IPFABRIC_VERIFY", True),
   },
 }
 ```
@@ -74,6 +75,7 @@ The plugin behavior can be controlled with the following list of settings
 
 - `IPFABRIC_API_TOKEN`: Token for accessing IP Fabric API
 - `IPFABRIC_HOST`: URL of IP Fabric instance
+- `IPFABRIC_VERIFY`: Default: True; False to ignore self-signed certificates
 
 ## Development
 
