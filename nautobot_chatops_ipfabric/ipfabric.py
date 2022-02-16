@@ -1,5 +1,4 @@
 """IPFabric API integration."""
-
 import logging
 from operator import ge
 
@@ -211,9 +210,9 @@ class IpFabric:
                     "startingPoint": src_ip,
                     "destinationPoint": dst_ip,
                     "groupBy": "siteName",
-                    "networkMode": "true",
+                    "networkMode": "false",
                     "securedPath": "false",
-                    "otherOptions": {"applications": ".*", "tracked": False},
+                    "otherOptions": {"applications": ".*", "tracked": "false"},
                     "firstHopAlgorithm": {"type": "automatic"},
                     "srcRegions": ".*",
                     "dstRegions": ".*",
@@ -223,11 +222,11 @@ class IpFabric:
                 },
             }
             if protocol in ["udp", "tcp"]:
-                payload["l4Options"] = {"dstPorts": str(dst_port), "srcPorts": str(src_port)}
+                payload["parameters"]["l4Options"] = {"dstPorts": str(dst_port), "srcPorts": str(src_port)}
             if protocol == "tcp":
-                payload["l4Options"]["flags"] = []
+                payload["parameters"]["l4Options"]["flags"] = []
             if protocol == "icmp":
-                payload["l4Options"] = {"type": 8, "code": 0}
+                payload["parameters"]["l4Options"] = {"type": 8, "code": 0}
         else:
             payload = {
                 "snapshot": snapshot_id,
@@ -248,14 +247,11 @@ class IpFabric:
             "Received end-to-end PNG path simulation request: ", payload
         )
 
-        # no params required
-        params = {}
-
-        json_response = self.get_response_json("POST", "/api/v1/graphs", payload, params=params)
+        json_response = self.get_response_json("POST", "/api/v1/graphs", payload)
         pathlookup = json_response.get("pathlookup", {})
-        png_response = self.get_response_raw("POST", "/api/v1/graphs/png", payload, params=params)
+        png_response = self.get_response_raw("POST", "/api/v1/graphs/png", payload)
 
-        for flag in pathlookup.get("eventsSummary", {}).get("flags"):
+        for flag in pathlookup.get("eventsSummary", {}).get("flags", []):
             if flag in no_png_flags:
                 return None
         return png_response.content
