@@ -2,6 +2,8 @@ ARG PYTHON_VER
 ARG NAUTOBOT_VER
 FROM ghcr.io/nautobot/nautobot-dev:${NAUTOBOT_VER}-py${PYTHON_VER}
 
+RUN pip install -U "setuptools==59.1.1"
+
 WORKDIR /source
 
 # Copy in only pyproject.toml/poetry.lock to help with caching this layer if no updates to dependencies
