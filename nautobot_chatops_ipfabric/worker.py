@@ -525,6 +525,14 @@ def pathlookup(
                 # Note: Microsoft Teams will silently fail if we have ":" in our filename, so the timestamp has to skip them.
                 time_str = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
                 img_path = os.path.join(tempdir, f"{sub_cmd}_{time_str}.png")
+                # MS Teams requires permission to upload files.
+                if dispatcher.needs_permission_to_send_image():
+                    dispatcher.ask_permission_to_send_image(
+                        f"{sub_cmd}_{time_str}.png",
+                        f"{BASE_CMD} {sub_cmd} {src_ip} {dst_ip} {src_port} {dst_port} {protocol}",
+                    )
+                    return False
+
                 with open(img_path, "wb") as img_file:
                     img_file.write(raw_png)
                 dispatcher.send_image(img_path)
