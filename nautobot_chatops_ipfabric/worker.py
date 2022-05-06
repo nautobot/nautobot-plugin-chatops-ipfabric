@@ -11,6 +11,9 @@ from nautobot_chatops.choices import CommandStatusChoices
 from nautobot_chatops.workers import subcommand_of, handle_subcommands
 from netutils.ip import is_ip
 from netutils.mac import is_valid_mac
+from ipfabric_diagrams import IPFDiagram, Unicast
+from ipfabric import IPFClient
+
 from .ipfabric import IpFabric, LAST
 from .context import get_context, set_context
 
@@ -23,6 +26,12 @@ logger = logging.getLogger("rq.worker")
 
 ipfabric_api = IpFabric(
     host_url=settings.PLUGINS_CONFIG["nautobot_chatops_ipfabric"].get("IPFABRIC_HOST"),
+    token=settings.PLUGINS_CONFIG["nautobot_chatops_ipfabric"].get("IPFABRIC_API_TOKEN"),
+    verify=settings.PLUGINS_CONFIG["nautobot_chatops_ipfabric"].get("IPFABRIC_VERIFY"),
+)
+
+ipfabric_client = IPFClient(
+    base_url=settings.PLUGINS_CONFIG["nautobot_chatops_ipfabric"].get("IPFABRIC_HOST"),
     token=settings.PLUGINS_CONFIG["nautobot_chatops_ipfabric"].get("IPFABRIC_API_TOKEN"),
     verify=settings.PLUGINS_CONFIG["nautobot_chatops_ipfabric"].get("IPFABRIC_VERIFY"),
 )
@@ -452,7 +461,9 @@ def pathlookup(
     snapshot_id = get_user_snapshot(dispatcher)
     sub_cmd = "pathlookup"
     supported_protocols = ["tcp", "udp", "icmp"]
+    # supported_flags = ["ack", "fin", "psh", "rst", "syn", "urg"]
     protocols = [(protocol.upper(), protocol) for protocol in supported_protocols]
+    # tcp_flags = [(tcp_flag.upper(), tcp_flag) for tcp_flag in supported_flags]
 
     # identical to dialog_list in end-to-end-path; consolidate dialog_list if maintaining both cmds
     dialog_list = [
@@ -465,20 +476,20 @@ def pathlookup(
             "label": "Destination IP",
         },
         {
-            "type": "text",
-            "label": "Source Port",
-            "default": "1000",
-        },
-        {
-            "type": "text",
-            "label": "Destination Port",
-            "default": "22",
-        },
-        {
             "type": "select",
             "label": "Protocol",
             "choices": protocols,
             "default": protocols[0],
+        },
+        {
+            "type": "text",
+            "label": "Source Ports",
+            "default": "1000",
+        },
+        {
+            "type": "text",
+            "label": "Destination Ports",
+            "default": "22",
         },
     ]
 
@@ -513,10 +524,24 @@ def pathlookup(
         ]
     )
 
-    # only supported in IP Fabric OS version 4.0+
+    # diagrams for 4.0 - 4.2 are not supported due to attribute changes in 4.3+
     try:
-        if ipfabric_api.validate_version(ge, 4.0):
-            raw_png = ipfabric_api.get_pathlookup(src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id)
+        os_version = ipfabric_client.os_version
+        if os_version and ge(os_version, "4.3"):
+            ipfabric_diagram_client = IPFDiagram(
+                base_url=settings.PLUGINS_CONFIG["nautobot_chatops_ipfabric"].get("IPFABRIC_HOST"),
+                token=settings.PLUGINS_CONFIG["nautobot_chatops_ipfabric"].get("IPFABRIC_API_TOKEN"),
+                verify=settings.PLUGINS_CONFIG["nautobot_chatops_ipfabric"].get("IPFABRIC_VERIFY"),
+                timeout=15,
+            )
+            unicast = Unicast(
+                startingPoint=src_ip,
+                destinationPoint=dst_ip,
+                protocol=protocol,
+                srcPorts=src_port,
+                dstPorts=dst_port,
+            )
+            raw_png = ipfabric_diagram_client.diagram_png(unicast, snapshot_id)
             if not raw_png:
                 raise RuntimeError(
                     "An error occurred while retrieving the path lookup. Please verify the path using the link above."
@@ -538,7 +563,7 @@ def pathlookup(
                 dispatcher.send_image(img_path)
         else:
             raise RuntimeError(
-                "Your IP Fabric OS version does not support PNG output. Please try the end-to-end-path command."
+                "PNG output for this chatbot is only supported on IP Fabric version 4.3 and above. Please try the end-to-end-path command."
             )
     except (RuntimeError, OSError) as error:
         dispatcher.send_error(error)
