@@ -24,6 +24,7 @@ IPFABRIC_LOGO_ALT = "IPFabric Logo"
 
 logger = logging.getLogger("rq.worker")
 
+# us of the IpFabric class is temporary until we complete migration to python-ipfabric library
 ipfabric_api = IpFabric(
     host_url=settings.PLUGINS_CONFIG["nautobot_chatops_ipfabric"].get("IPFABRIC_HOST"),
     token=settings.PLUGINS_CONFIG["nautobot_chatops_ipfabric"].get("IPFABRIC_API_TOKEN"),
@@ -34,6 +35,13 @@ ipfabric_client = IPFClient(
     base_url=settings.PLUGINS_CONFIG["nautobot_chatops_ipfabric"].get("IPFABRIC_HOST"),
     token=settings.PLUGINS_CONFIG["nautobot_chatops_ipfabric"].get("IPFABRIC_API_TOKEN"),
     verify=settings.PLUGINS_CONFIG["nautobot_chatops_ipfabric"].get("IPFABRIC_VERIFY"),
+)
+
+ipfabric_diagram_client = IPFDiagram(
+    base_url=settings.PLUGINS_CONFIG["nautobot_chatops_ipfabric"].get("IPFABRIC_HOST"),
+    token=settings.PLUGINS_CONFIG["nautobot_chatops_ipfabric"].get("IPFABRIC_API_TOKEN"),
+    verify=settings.PLUGINS_CONFIG["nautobot_chatops_ipfabric"].get("IPFABRIC_VERIFY"),
+    timeout=15,
 )
 
 inventory_field_mapping = {
@@ -528,12 +536,6 @@ def pathlookup(
     try:
         os_version = ipfabric_client.os_version
         if os_version and ge(os_version, "4.3"):
-            ipfabric_diagram_client = IPFDiagram(
-                base_url=settings.PLUGINS_CONFIG["nautobot_chatops_ipfabric"].get("IPFABRIC_HOST"),
-                token=settings.PLUGINS_CONFIG["nautobot_chatops_ipfabric"].get("IPFABRIC_API_TOKEN"),
-                verify=settings.PLUGINS_CONFIG["nautobot_chatops_ipfabric"].get("IPFABRIC_VERIFY"),
-                timeout=15,
-            )
             unicast = Unicast(
                 startingPoint=src_ip,
                 destinationPoint=dst_ip,
