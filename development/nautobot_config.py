@@ -311,6 +311,7 @@ PLUGINS_CONFIG = {
         "IPFABRIC_API_TOKEN": os.environ.get("IPFABRIC_API_TOKEN"),
         "IPFABRIC_HOST": os.environ.get("IPFABRIC_HOST"),
         "IPFABRIC_VERIFY": is_truthy(os.environ.get("IPFABRIC_VERIFY", True)),
+        "IPFABRIC_TIMEOUT": os.environ.get("IPFABRIC_TIMEOUT", 15),
     },
 }
 
