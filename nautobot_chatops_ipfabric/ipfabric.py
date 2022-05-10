@@ -194,42 +194,6 @@ class IpFabric:
         payload = {}
         return self.get_response_json("GET", "/api/v1/graph/end-to-end-path", payload, params)
 
-    def get_pathlookup(
-        self, src_ip, dst_ip, src_port, dst_port, protocol, snapshot_id
-    ):  # pylint: disable=too-many-arguments
-        """Return pathlookup simulation as PNG output. Requires v4 IP Fabric server."""
-        no_png_flags = ["no-dgw", "no-receiver", "no-source"]  # a path with these flags results in any empty PNG
-        payload = {
-            "snapshot": snapshot_id,
-            "parameters": {
-                "type": "pathLookup",
-                "pathLookupType": "unicast",
-                "protocol": protocol,
-                "startingPoint": src_ip,
-                "startingPort": src_port,
-                "destinationPoint": dst_ip,
-                "destinationPort": dst_port,
-                "groupBy": "siteName",
-                "networkMode": "true",
-                "securedPath": "false",
-            },
-        }
-        logger.debug(  # pylint: disable=logging-too-many-args
-            "Received end-to-end PNG path simulation request: ", payload
-        )
-
-        # no params required
-        params = {}
-
-        json_response = self.get_response_json("POST", "/api/v1/graphs", payload, params=params)
-        pathlookup = json_response.get("pathlookup", {})
-        png_response = self.get_response_raw("POST", "/api/v1/graphs/png", payload, params=params)
-
-        for flag in pathlookup.get("eventsSummary", {}).get("flags"):
-            if flag in no_png_flags:
-                return None
-        return png_response.content
-
     def get_interfaces_errors_info(self, device, snapshot_id=LAST, limit=DEFAULT_PAGE_LIMIT):
         """Return bi-directional interface errors info."""
         logger.debug("Received interface error counters request")

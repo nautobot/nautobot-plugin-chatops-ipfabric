@@ -28,6 +28,7 @@ python = "^3.7.1"
 nautobot-chatops = "^1.1.0"
 netutils = "^1.0.0"
 ipfabric-diagrams = "^1.2.7"
+ipfabric = "^0"
 
 [tool.poetry.dev-dependencies]
 invoke = "*"
