@@ -41,7 +41,7 @@ ipfabric_diagram_client = IPFDiagram(
     base_url=settings.PLUGINS_CONFIG["nautobot_chatops_ipfabric"].get("IPFABRIC_HOST"),
     token=settings.PLUGINS_CONFIG["nautobot_chatops_ipfabric"].get("IPFABRIC_API_TOKEN"),
     verify=settings.PLUGINS_CONFIG["nautobot_chatops_ipfabric"].get("IPFABRIC_VERIFY"),
-    timeout=15,
+    timeout=settings.PLUGINS_CONFIG["nautobot_chatops_ipfabric"].get("IPFABRIC_TIMEOUT"),
 )
 
 inventory_field_mapping = {
@@ -469,9 +469,7 @@ def pathlookup(
     snapshot_id = get_user_snapshot(dispatcher)
     sub_cmd = "pathlookup"
     supported_protocols = ["tcp", "udp", "icmp"]
-    # supported_flags = ["ack", "fin", "psh", "rst", "syn", "urg"]
     protocols = [(protocol.upper(), protocol) for protocol in supported_protocols]
-    # tcp_flags = [(tcp_flag.upper(), tcp_flag) for tcp_flag in supported_flags]
 
     # identical to dialog_list in end-to-end-path; consolidate dialog_list if maintaining both cmds
     dialog_list = [
