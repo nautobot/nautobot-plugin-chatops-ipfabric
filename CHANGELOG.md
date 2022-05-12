@@ -1,3 +1,13 @@
+## v1.1.2 - 2022-05-11
+
+### Added
+
+- #87 - Migrate `ipfabric pathlookup` to use the ipfabric-diagrams library. PNG output for IP Fabric 4.3+ only.
+- #85 - Update plugin description to Nautobot Plugin Chatops IPFabric.
+- #84 - Added Hugo as codeowner.
+- #83 - Request permission to send files to Microsoft Teams.
+
+
 ## v1.1.1 - 2022-02-10
 
 ### Added
