@@ -689,10 +689,9 @@ def wireless(dispatcher, option=None, ssid=None):
     """Get wireless information by client or ssid."""
     snapshot_id = get_user_snapshot(dispatcher)
     logger.debug("Getting SSIDs")
+    ssids = ipfabric_api.get_wireless_ssids(snapshot_id)
 
-    ssids_raw = ipfabric_api.get_wireless_ssids(snapshot_id)
-
-    if not ssids_raw:
+    if not ssids:
         dispatcher.send_blocks(
             [
                 *dispatcher.command_response_header(
@@ -706,8 +705,6 @@ def wireless(dispatcher, option=None, ssid=None):
             ]
         )
         return True
-
-    ssids = [(ssidi["wlanSsid"].lower()) for ssidi in ssids_raw]
 
     if not option:
         dispatcher.prompt_from_menu(
