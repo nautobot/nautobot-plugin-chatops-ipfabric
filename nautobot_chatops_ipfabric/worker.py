@@ -689,7 +689,7 @@ def wireless(dispatcher, option=None, ssid=None):
     """Get wireless information by client or ssid."""
     snapshot_id = get_user_snapshot(dispatcher)
     logger.debug("Getting SSIDs")
-    ssids = [(ssidi["wlanSsid"].lower()) for ssidi in ipfabric_api.get_wireless_ssids(snapshot_id)]
+    ssids = [(ssidi["wlanSsid"].lower()) for ssidi in ipfabric_api.get_wireless_ssids(snapshot_id) if ssidi]
 
     if not ssids:
         dispatcher.send_blocks(
