@@ -17,8 +17,8 @@ class IPFabricConfig(PluginConfig):
     verbose_name = "IPFabric"
     version = __version__
     author = "Network to Code, LLC"
-    description = "IPFabric."
-    base_url = "ipfabric.io"
+    description = "Nautobot Chatops IPFabric"
+    base_url = "nautobot-chatops-ipfabric"
     required_settings = []
     min_version = "1.0.0"
     max_version = "1.9999"
