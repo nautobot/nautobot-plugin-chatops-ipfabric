@@ -468,7 +468,7 @@ def pathlookup(
     """Path simulation diagram lookup between source and target IP address."""
     snapshot_id = get_user_snapshot(dispatcher)
     sub_cmd = "pathlookup"
-
+    supported_protocols = ["tcp", "udp", "icmp"]
     protocols = [(protocol.upper(), protocol) for protocol in supported_protocols]
 
     # identical to dialog_list in end-to-end-path; consolidate dialog_list if maintaining both cmds
