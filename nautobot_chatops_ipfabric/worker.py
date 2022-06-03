@@ -482,12 +482,6 @@ def pathlookup(
             "label": "Destination IP",
         },
         {
-            "type": "select",
-            "label": "Protocol",
-            "choices": protocols,
-            "default": protocols[0],
-        },
-        {
             "type": "text",
             "label": "Source Ports",
             "default": "1000",
@@ -496,6 +490,12 @@ def pathlookup(
             "type": "text",
             "label": "Destination Ports",
             "default": "22",
+        },
+        {
+            "type": "select",
+            "label": "Protocol",
+            "choices": protocols,
+            "default": protocols[0],
         },
     ]
 
