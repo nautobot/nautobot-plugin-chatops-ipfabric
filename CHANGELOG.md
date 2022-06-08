@@ -3,6 +3,7 @@
 ## Added
 
 - #96 - Slack CI notification for build pipeline.
+
 ### Fixed
 
 - #97 - Fix for pathlookup argument selection error when using dialog box.
