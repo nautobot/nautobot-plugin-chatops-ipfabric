@@ -1,3 +1,13 @@
+## v1.1.4 - 2022-06-08
+
+## Added
+
+- #96 - Slack CI notification for build pipeline.
+
+### Fixed
+
+- #97 - Fix for pathlookup argument selection error when using dialog box.
+
 ## v1.1.3 - 2022-05-25
 
 ### Fixed
@@ -6,9 +16,6 @@
 - #92 - Update plugin description.
 - #91 - Fix for null WLAN SSIDs.
 
-### Fixed
-
- 
 ## v1.1.2 - 2022-05-11
 
 ### Added
