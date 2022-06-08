@@ -9,40 +9,68 @@ from django.conf import settings
 from django_rq import job
 from nautobot_chatops.choices import CommandStatusChoices
 from nautobot_chatops.workers import subcommand_of, handle_subcommands
+from nautobot_chatops_ipfabric.ipfabric import DEFAULT_PAGE_LIMIT
 from netutils.ip import is_ip
 from netutils.mac import is_valid_mac
 from ipfabric_diagrams import IPFDiagram, Unicast
 from ipfabric import IPFClient
 
-from .ipfabric import IpFabric, LAST
+from .ipfabric_wrapper import (
+    INTERFACE_DROPS_COLUMNS,
+    INTERFACE_ERRORS_COLUMNS,
+    INTERFACE_LOAD_COLUMNS,
+    IpFabric,
+    LAST,
+    DEVICE_INFO_COLUMNS,
+)
 from .context import get_context, set_context
+from .utils import create_regex
 
 BASE_CMD = "ipfabric"
 IPFABRIC_LOGO_PATH = "ipfabric/ipfabric_logo.png"
 IPFABRIC_LOGO_ALT = "IPFabric Logo"
 
+EMPTY = "(empty)"
+
+CHATOPS_IPFABRIC = "nautobot_chatops_ipfabric"
+IPFABRIC_HOST = "IPFABRIC_HOST"
+IPFABRIC_API_TOKEN = "IPFABRIC_API_TOKEN"
+IPFABRIC_VERIFY = "IPFABRIC_VERIFY"
+IPFABRIC_TIMEOUT = "IPFABRIC_TIMEOUT"
+
+# URLs
+INVENTORY_DEVICES_URL = "tables/inventory/devices"
+INTERFACE_LOAD_URL = "tables/interfaces/load"
+INTERFACE_ERRORS_URL = "tables/interfaces/errors/bidirectional"
+INTERFACE_DROPS_URL = "tables/interfaces/drops/bidirectional"
+
+# Filters
+EQ = "eq"
+
+# Sort
+INTERFACE_SORT = {"order": "desc", "column": "intName"}
 
 logger = logging.getLogger("rq.worker")
 
 # TODO: us of the IpFabric class is temporary until we complete migration to python-ipfabric library
 ipfabric_api = IpFabric(
-    host_url=settings.PLUGINS_CONFIG["nautobot_chatops_ipfabric"].get("IPFABRIC_HOST"),
-    token=settings.PLUGINS_CONFIG["nautobot_chatops_ipfabric"].get("IPFABRIC_API_TOKEN"),
-    verify=settings.PLUGINS_CONFIG["nautobot_chatops_ipfabric"].get("IPFABRIC_VERIFY"),
+    base_url=settings.PLUGINS_CONFIG[CHATOPS_IPFABRIC].get(IPFABRIC_HOST),
+    token=settings.PLUGINS_CONFIG[CHATOPS_IPFABRIC].get(IPFABRIC_API_TOKEN),
+    verify=settings.PLUGINS_CONFIG[CHATOPS_IPFABRIC].get(IPFABRIC_VERIFY),
 )
 
-ipfabric_client = IPFClient(
-    base_url=settings.PLUGINS_CONFIG["nautobot_chatops_ipfabric"].get("IPFABRIC_HOST"),
-    token=settings.PLUGINS_CONFIG["nautobot_chatops_ipfabric"].get("IPFABRIC_API_TOKEN"),
-    verify=settings.PLUGINS_CONFIG["nautobot_chatops_ipfabric"].get("IPFABRIC_VERIFY"),
-)
+# ipfabric_client = IPFClient(
+#     base_url=settings.PLUGINS_CONFIG["nautobot_chatops_ipfabric"].get("IPFABRIC_HOST"),
+#     token=settings.PLUGINS_CONFIG["nautobot_chatops_ipfabric"].get("IPFABRIC_API_TOKEN"),
+#     verify=settings.PLUGINS_CONFIG["nautobot_chatops_ipfabric"].get("IPFABRIC_VERIFY"),
+# )
 
-ipfabric_diagram_client = IPFDiagram(
-    base_url=settings.PLUGINS_CONFIG["nautobot_chatops_ipfabric"].get("IPFABRIC_HOST"),
-    token=settings.PLUGINS_CONFIG["nautobot_chatops_ipfabric"].get("IPFABRIC_API_TOKEN"),
-    verify=settings.PLUGINS_CONFIG["nautobot_chatops_ipfabric"].get("IPFABRIC_VERIFY"),
-    timeout=settings.PLUGINS_CONFIG["nautobot_chatops_ipfabric"].get("IPFABRIC_TIMEOUT"),
-)
+# ipfabric_diagram_client = IPFDiagram(
+#     base_url=settings.PLUGINS_CONFIG["nautobot_chatops_ipfabric"].get("IPFABRIC_HOST"),
+#     token=settings.PLUGINS_CONFIG["nautobot_chatops_ipfabric"].get("IPFABRIC_API_TOKEN"),
+#     verify=settings.PLUGINS_CONFIG["nautobot_chatops_ipfabric"].get("IPFABRIC_VERIFY"),
+#     timeout=settings.PLUGINS_CONFIG["nautobot_chatops_ipfabric"].get("IPFABRIC_TIMEOUT"),
+# )
 
 inventory_field_mapping = {
     "site": "siteName",
@@ -50,7 +78,6 @@ inventory_field_mapping = {
     "platform": "platform",
     "vendor": "vendor",
 }
-
 inventory_host_fields = ["ip", "mac"]
 inventory_host_func_mapper = {inventory_host_fields[0]: is_ip, inventory_host_fields[1]: is_valid_mac}
 
@@ -90,18 +117,20 @@ def prompt_snapshot_id(action_id, help_text, dispatcher, choices=None):
 def prompt_inventory_filter_values(action_id, help_text, dispatcher, filter_key, choices=None):
     """Prompt the user for input inventory search value selection."""
     column_name = inventory_field_mapping.get(filter_key.lower())
-    choices = {
-        (device[column_name], device[column_name])
-        for device in ipfabric_api.get_devices_info(get_user_snapshot(dispatcher))
-        if device.get(column_name)
-    }
+    inventory_data = ipfabric_api.client.fetch(
+        INVENTORY_DEVICES_URL,
+        columns=DEVICE_INFO_COLUMNS,
+        limit=DEFAULT_PAGE_LIMIT,
+        snapshot_id=get_user_snapshot(dispatcher),
+    )
+    choices = {(device[column_name], device[column_name]) for device in inventory_data if device.get(column_name)}
     dispatcher.prompt_from_menu(action_id, help_text, list(choices))
     return False
 
 
 def prompt_inventory_filter_keys(action_id, help_text, dispatcher, choices=None):
     """Prompt the user for input inventory search criteria."""
-    choices = [("Site", "site"), ("Model", "model"), ("Vendor", "vendor"), ("Platform", "platform")]
+    choices = [(column.capitalize(), column) for column in inventory_field_mapping.keys()]
     dispatcher.prompt_from_menu(action_id, help_text, choices)
     return False
 
@@ -121,7 +150,7 @@ def get_user_snapshot(dispatcher):
     context = get_context(dispatcher.context["user_id"])
     snapshot = context.get("snapshot")
     if not snapshot:
-        snapshot = ipfabric_api.get_snapshots()[LAST].snapshot_id
+        snapshot = ipfabric_api.client.snapshots[LAST].snapshot_id
         set_context(dispatcher.context["user_id"], {"snapshot": snapshot})
 
     return snapshot
@@ -187,7 +216,15 @@ def get_inventory(dispatcher, filter_key=None, filter_value=None):
         return False
 
     col_name = inventory_field_mapping.get(filter_key.lower())
-    devices = ipfabric_api.get_device_inventory(col_name, filter_value, get_user_snapshot(dispatcher))
+    columns = ["hostname", "siteName", "vendor", "platform", "model", "memoryUtilization", "version", "sn", "loginIp"]
+    filter = {col_name: [EQ, filter_value]}
+    devices = ipfabric_api.client.fetch(
+        INVENTORY_DEVICES_URL,
+        columns=columns,
+        filter=filter,
+        limit=DEFAULT_PAGE_LIMIT,
+        snapshot_id=get_user_snapshot(dispatcher),
+    )
 
     dispatcher.send_blocks(
         [
@@ -206,15 +243,15 @@ def get_inventory(dispatcher, filter_key=None, filter_value=None):
         ["Hostname", "Site", "Vendor", "Platform", "Model", "Memory Utilization", "S/W Version", "Serial", "Mgmt IP"],
         [
             (
-                device.get("hostname") or "(empty)",
-                device.get("siteName") or "(empty)",
-                device.get("vendor") or "(empty)",
-                device.get("platform") or "(empty)",
-                device.get("model") or "(empty)",
-                device.get("memoryUtilization") or "(empty)",
-                device.get("version") or "(empty)",
-                device.get("sn") or "(empty)",
-                device.get("loginIp") or "(empty)",
+                device.get("hostname") or EMPTY,
+                device.get("siteName") or EMPTY,
+                device.get("vendor") or EMPTY,
+                device.get("platform") or EMPTY,
+                device.get("model") or EMPTY,
+                device.get("memoryUtilization") or EMPTY,
+                device.get("version") or EMPTY,
+                device.get("sn") or EMPTY,
+                device.get("loginIp") or EMPTY,
             )
             for device in devices
         ],
@@ -230,16 +267,22 @@ def interfaces(dispatcher, device=None, metric=None):
     """Get interface metrics for a device."""
     snapshot_id = get_user_snapshot(dispatcher)
     logger.debug("Getting devices")
-    devices = [
-        (device["hostname"], device["hostname"].lower()) for device in ipfabric_api.get_devices_info(snapshot_id)
-    ]
+    sub_cmd = "interfaces"
+    inventory_data = ipfabric_api.client.fetch(
+        INVENTORY_DEVICES_URL,
+        columns=DEVICE_INFO_COLUMNS,
+        limit=DEFAULT_PAGE_LIMIT,
+        snapshot_id=get_user_snapshot(dispatcher),
+    )
+    devices = [(device["hostname"], device["hostname"].lower()) for device in inventory_data]
+    metrics = ["load", "errors", "drops"]
 
     if not devices:
         dispatcher.send_blocks(
             [
                 *dispatcher.command_response_header(
-                    "ipfabric",
-                    "routing",
+                    f"{BASE_CMD}",
+                    f"{sub_cmd}",
                     [(" "), (" ")],
                     "Device interface metric data",
                     ipfabric_logo(dispatcher),
@@ -261,34 +304,43 @@ def interfaces(dispatcher, device=None, metric=None):
         {
             "type": "select",
             "label": "Metric",
-            "choices": [("Load", "load"), ("Errors", "errors"), ("Drops", "drops")],
-            "default": ("Load", "load"),
+            "choices": [(metric.capitalize(), metric) for metric in metrics],
+            "default": metrics[0],
         },
     ]
 
     if not all([metric, device]):
-        dispatcher.multi_input_dialog(f"{BASE_CMD}", "interfaces", "Interface Metrics", dialog_list)
+        dispatcher.multi_input_dialog(f"{BASE_CMD}", f"{sub_cmd}", "Interface Metrics", dialog_list)
         return CommandStatusChoices.STATUS_SUCCEEDED
 
-    cmd_map = {"load": get_int_load, "errors": get_int_errors, "drops": get_int_drops}
+    cmd_map = {metric[0]: get_int_load, metric[1]: get_int_errors, metric[2]: get_int_drops}
     cmd_map[metric](dispatcher, device, snapshot_id)
     return True
 
 
 def get_int_load(dispatcher, device, snapshot_id):
     """Get interface load per device."""
+    sub_cmd = "interfaces"
     dispatcher.send_markdown(f"Load in interfaces for *{device}* in snapshot *{snapshot_id}*.")
-    int_load = ipfabric_api.get_interfaces_load_info(device, snapshot_id)
+    filter = {"hostname": ["reg", create_regex(device)]}
+    int_load = ipfabric_api.client.fetch(
+        INTERFACE_LOAD_URL,
+        columns=INTERFACE_LOAD_COLUMNS,
+        filter=filter,
+        limit=DEFAULT_PAGE_LIMIT,
+        snapshot_id=get_user_snapshot(dispatcher),
+        sort=INTERFACE_SORT,
+    )
     dispatcher.send_blocks(
         [
             *dispatcher.command_response_header(
-                "ipfabric",
-                "interfaces",
+                f"{BASE_CMD}",
+                f"{sub_cmd}",
                 [("Device", device), ("Metric", "load")],
                 "interface load data",
                 ipfabric_logo(dispatcher),
             ),
-            dispatcher.markdown_block(f"{ipfabric_api.host_url}/technology/interfaces/rate/inbound"),
+            dispatcher.markdown_block(f"{str(ipfabric_api.client.base_url)}/technology/interfaces/rate/inbound"),
         ]
     )
 
@@ -296,9 +348,9 @@ def get_int_load(dispatcher, device, snapshot_id):
         ["IntName", "IN bps", "OUT bps"],
         [
             (
-                interface["intName"],
-                interface["inBytes"],
-                interface["outBytes"],
+                interface[INTERFACE_LOAD_COLUMNS[0]],
+                interface[INTERFACE_LOAD_COLUMNS[1]],
+                interface[INTERFACE_LOAD_COLUMNS[2]],
             )
             for interface in int_load
         ],
@@ -309,19 +361,30 @@ def get_int_load(dispatcher, device, snapshot_id):
 
 def get_int_errors(dispatcher, device, snapshot_id):
     """Get interface errors per device."""
+    sub_cmd = "interfaces"
     dispatcher.send_markdown(f"Load in interfaces for *{device}* in snapshot *{snapshot_id}*.")
-    int_errors = ipfabric_api.get_interfaces_errors_info(device, snapshot_id)
+    filter = {"hostname": ["reg", create_regex(device)]}
+    int_errors = ipfabric_api.client.fetch(
+        INTERFACE_LOAD_URL,
+        columns=INTERFACE_ERRORS_COLUMNS,
+        filter=filter,
+        limit=DEFAULT_PAGE_LIMIT,
+        snapshot_id=get_user_snapshot(dispatcher),
+        sort=INTERFACE_SORT,
+    )
 
     dispatcher.send_blocks(
         [
             *dispatcher.command_response_header(
-                "ipfabric",
-                "interfaces",
+                f"{BASE_CMD}",
+                f"{sub_cmd}",
                 [("Device", device), ("Metric", "errors")],
                 "interface error data",
                 ipfabric_logo(dispatcher),
             ),
-            dispatcher.markdown_block(f"{ipfabric_api.host_url}/technology/interfaces/error-rates/bidirectional"),
+            dispatcher.markdown_block(
+                f"{str(ipfabric_api.client.base_url)}/technology/interfaces/error-rates/bidirectional"
+            ),
         ]
     )
 
@@ -329,9 +392,9 @@ def get_int_errors(dispatcher, device, snapshot_id):
         ["IntName", "Error %", "Error Rate"],
         [
             (
-                interface["intName"],
-                interface["errPktsPct"],
-                interface["errRate"],
+                interface[INTERFACE_ERRORS_COLUMNS[0]],
+                interface[INTERFACE_ERRORS_COLUMNS[1]],
+                interface[INTERFACE_ERRORS_COLUMNS[2]],
             )
             for interface in int_errors
         ],
@@ -342,19 +405,30 @@ def get_int_errors(dispatcher, device, snapshot_id):
 
 def get_int_drops(dispatcher, device, snapshot_id):
     """Get bi-directional interface drops per device."""
+    sub_cmd = "interfaces"
     dispatcher.send_markdown(f"Load in interfaces for *{device}* in snapshot *{snapshot_id}*.")
-    int_drops = ipfabric_api.get_interfaces_drops_info(device, snapshot_id)
+    filter = {"hostname": ["reg", create_regex(device)]}
+    int_drops = ipfabric_api.client.fetch(
+        INTERFACE_LOAD_URL,
+        columns=INTERFACE_DROPS_COLUMNS,
+        filter=filter,
+        limit=DEFAULT_PAGE_LIMIT,
+        snapshot_id=get_user_snapshot(dispatcher),
+        sort=INTERFACE_SORT,
+    )
 
     dispatcher.send_blocks(
         [
             *dispatcher.command_response_header(
-                "ipfabric",
-                "interfaces",
+                f"{BASE_CMD}",
+                f"{sub_cmd}",
                 [("Device", device), ("Metric", "drops")],
                 "interface average drop data",
                 ipfabric_logo(dispatcher),
             ),
-            dispatcher.markdown_block(f"{ipfabric_api.host_url}/technology/interfaces/drop-rates/bidirectional"),
+            dispatcher.markdown_block(
+                f"{str(ipfabric_api.client.base_url)}/technology/interfaces/drop-rates/bidirectional"
+            ),
         ]
     )
 
@@ -362,9 +436,9 @@ def get_int_drops(dispatcher, device, snapshot_id):
         ["IntName", "% Drops", "Drop Rate"],
         [
             (
-                interface["intName"],
-                interface["dropsPktsPct"],
-                interface["dropsRate"],
+                interface[INTERFACE_DROPS_COLUMNS[0]],
+                interface[INTERFACE_DROPS_COLUMNS[1]],
+                interface[INTERFACE_DROPS_COLUMNS[2]],
             )
             for interface in int_drops
         ],
@@ -482,12 +556,6 @@ def pathlookup(
             "label": "Destination IP",
         },
         {
-            "type": "select",
-            "label": "Protocol",
-            "choices": protocols,
-            "default": protocols[0],
-        },
-        {
             "type": "text",
             "label": "Source Ports",
             "default": "1000",
@@ -496,6 +564,12 @@ def pathlookup(
             "type": "text",
             "label": "Destination Ports",
             "default": "22",
+        },
+        {
+            "type": "select",
+            "label": "Protocol",
+            "choices": protocols,
+            "default": protocols[0],
         },
     ]
 
@@ -532,7 +606,7 @@ def pathlookup(
 
     # diagrams for 4.0 - 4.2 are not supported due to attribute changes in 4.3+
     try:
-        os_version = ipfabric_client.os_version
+        os_version = ipfabric_api.client.os_version
         if os_version and ge(os_version, "4.3"):
             unicast = Unicast(
                 startingPoint=src_ip,
@@ -541,7 +615,7 @@ def pathlookup(
                 srcPorts=src_port,
                 dstPorts=dst_port,
             )
-            raw_png = ipfabric_diagram_client.diagram_png(unicast, snapshot_id)
+            raw_png = ipfabric_api.diagram.diagram_png(unicast, snapshot_id)
             if not raw_png:
                 raise RuntimeError(
                     "An error occurred while retrieving the path lookup. Please verify the path using the link above."
@@ -577,6 +651,7 @@ def pathlookup(
 @subcommand_of("ipfabric")
 def routing(dispatcher, device=None, protocol=None, filter_opt=None):
     """Get routing information for a device."""
+    sub_cmd = "routing"
     snapshot_id = get_user_snapshot(dispatcher)
     logger.debug("Getting devices")
     devices = [(device["hostname"], device["hostname"]) for device in ipfabric_api.get_devices_info(snapshot_id)]
@@ -585,8 +660,8 @@ def routing(dispatcher, device=None, protocol=None, filter_opt=None):
         dispatcher.send_blocks(
             [
                 *dispatcher.command_response_header(
-                    "ipfabric",
-                    "routing",
+                    f"{BASE_CMD}",
+                    f"{sub_cmd}",
                     [(" ", " ")],
                     "Routing data",
                     ipfabric_logo(dispatcher),
