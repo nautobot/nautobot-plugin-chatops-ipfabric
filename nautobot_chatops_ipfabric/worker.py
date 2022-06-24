@@ -196,7 +196,6 @@ def set_snapshot(dispatcher, snapshot=None):
         return False
 
     user = dispatcher.context["user_id"]
-    # snapshots = ipfabric_api.get_snapshots()
     snapshots = ipfabric_api.client.get_snapshots()
 
     if snapshot not in snapshots:

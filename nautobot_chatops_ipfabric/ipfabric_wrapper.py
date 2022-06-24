@@ -47,6 +47,8 @@ class IpFabric:
         """
         formatted_snapshots = []
         for snapshot_ref, snapshot in self.client.snapshots.items():
+            if snapshot.state != "loaded":
+                continue
             description = "🔒 " if snapshot.locked else ""
             if snapshot_ref in [LAST, PREV, LAST_LOCKED]:
                 description += f"{snapshot_ref}: "
