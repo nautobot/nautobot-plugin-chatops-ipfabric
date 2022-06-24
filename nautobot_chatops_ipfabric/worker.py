@@ -19,7 +19,7 @@ from .ipfabric_wrapper import (
     DEFAULT_PAGE_LIMIT,
 )
 from .context import get_context, set_context
-from .utils import create_regex, parse_hosts
+from .utils import parse_hosts
 
 BASE_CMD = "ipfabric"
 IPFABRIC_LOGO_PATH = "ipfabric/ipfabric_logo.png"
@@ -98,7 +98,7 @@ ADDRESSING_HOSTS_COLUMNS = [
 ]
 
 # Filters
-EQ = "eq"
+EQ = "ieq"
 
 # Sort
 INTERFACE_SORT = {"order": "desc", "column": "intName"}
@@ -354,7 +354,7 @@ def get_int_load(dispatcher, device, snapshot_id):
     """Get interface load per device."""
     sub_cmd = "interfaces"
     dispatcher.send_markdown(f"Load in interfaces for *{device}* in snapshot *{snapshot_id}*.")
-    filter_api = {"hostname": ["reg", create_regex(device)]}
+    filter_api = {"hostname": ["ieq", device]}
     int_load = ipfabric_api.client.fetch(
         INTERFACE_LOAD_URL,
         columns=INTERFACE_LOAD_COLUMNS,
@@ -395,7 +395,7 @@ def get_int_errors(dispatcher, device, snapshot_id):
     """Get interface errors per device."""
     sub_cmd = "interfaces"
     dispatcher.send_markdown(f"Load in interfaces for *{device}* in snapshot *{snapshot_id}*.")
-    filter_api = {"hostname": ["reg", create_regex(device)]}
+    filter_api = {"hostname": ["ieq", device]}
     int_errors = ipfabric_api.client.fetch(
         INTERFACE_LOAD_URL,
         columns=INTERFACE_ERRORS_COLUMNS,
@@ -439,7 +439,7 @@ def get_int_drops(dispatcher, device, snapshot_id):
     """Get bi-directional interface drops per device."""
     sub_cmd = "interfaces"
     dispatcher.send_markdown(f"Load in interfaces for *{device}* in snapshot *{snapshot_id}*.")
-    filter_api = {"hostname": ["reg", create_regex(device)]}
+    filter_api = {"hostname": ["ieq", device]}
     int_drops = ipfabric_api.client.fetch(
         INTERFACE_LOAD_URL,
         columns=INTERFACE_DROPS_COLUMNS,
@@ -666,9 +666,9 @@ def get_bgp_neighbors(dispatcher, device=None, snapshot_id=None, state=None):
         return False
 
     if state != "any":
-        filter_api = {"and": [{"hostname": ["reg", create_regex(device)]}, {"state": ["eq", state]}]}
+        filter_api = {"and": [{"hostname": ["ieq", device]}, {"state": ["ieq", state]}]}
     else:
-        filter_api = {"hostname": ["reg", create_regex(device)]}
+        filter_api = {"hostname": ["reg", device]}
 
     bgp_neighbors = ipfabric_api.client.fetch(
         BGP_NEIGHBORS_URL,
@@ -859,7 +859,7 @@ def get_wireless_clients(dispatcher, ssid=None, snapshot_id=None):
         )
         return False
 
-    filter_api = {"ssid": ["eq", ssid]} if ssid else {}
+    filter_api = {"ssid": ["ieq", ssid]} if ssid else {}
     clients = ipfabric_api.client.fetch(
         WIRELESS_CLIENT_URL,
         columns=WIRELESS_CLIENT_COLUMNS,
@@ -934,7 +934,7 @@ def find_host(dispatcher, filter_key=None, filter_value=None):
         dispatcher.send_error(f"You've entered an invalid {filter_key.upper()}")
         return CommandStatusChoices.STATUS_FAILED
 
-    filter_api = {filter_key: ["eq", filter_value]}
+    filter_api = {filter_key: ["ieq", filter_value]}
     inventory_hosts = ipfabric_api.client.fetch(
         ADDRESSING_HOSTS_URL,
         columns=ADDRESSING_HOSTS_COLUMNS,
