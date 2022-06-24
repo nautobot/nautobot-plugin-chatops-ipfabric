@@ -353,7 +353,7 @@ def get_int_load(dispatcher, device, snapshot_id):
     """Get interface load per device."""
     sub_cmd = "interfaces"
     dispatcher.send_markdown(f"Load in interfaces for *{device}* in snapshot *{snapshot_id}*.")
-    filter_api = {"hostname": ["ieq", device]}
+    filter_api = {"hostname": [EQ, device]}
     int_load = ipfabric_api.client.fetch(
         INTERFACE_LOAD_URL,
         columns=INTERFACE_LOAD_COLUMNS,
@@ -394,7 +394,7 @@ def get_int_errors(dispatcher, device, snapshot_id):
     """Get interface errors per device."""
     sub_cmd = "interfaces"
     dispatcher.send_markdown(f"Load in interfaces for *{device}* in snapshot *{snapshot_id}*.")
-    filter_api = {"hostname": ["ieq", device]}
+    filter_api = {"hostname": [EQ, device]}
     int_errors = ipfabric_api.client.fetch(
         INTERFACE_LOAD_URL,
         columns=INTERFACE_ERRORS_COLUMNS,
@@ -438,7 +438,7 @@ def get_int_drops(dispatcher, device, snapshot_id):
     """Get bi-directional interface drops per device."""
     sub_cmd = "interfaces"
     dispatcher.send_markdown(f"Load in interfaces for *{device}* in snapshot *{snapshot_id}*.")
-    filter_api = {"hostname": ["ieq", device]}
+    filter_api = {"hostname": [EQ, device]}
     int_drops = ipfabric_api.client.fetch(
         INTERFACE_LOAD_URL,
         columns=INTERFACE_DROPS_COLUMNS,
@@ -665,7 +665,7 @@ def get_bgp_neighbors(dispatcher, device=None, snapshot_id=None, state=None):
         return False
 
     if state != "any":
-        filter_api = {"and": [{"hostname": ["ieq", device]}, {"state": ["ieq", state]}]}
+        filter_api = {"and": [{"hostname": [EQ, device]}, {"state": [EQ, state]}]}
     else:
         filter_api = {"hostname": ["reg", device]}
 
@@ -858,7 +858,7 @@ def get_wireless_clients(dispatcher, ssid=None, snapshot_id=None):
         )
         return False
 
-    filter_api = {"ssid": ["ieq", ssid]} if ssid else {}
+    filter_api = {"ssid": [EQ, ssid]} if ssid else {}
     clients = ipfabric_api.client.fetch(
         WIRELESS_CLIENT_URL,
         columns=WIRELESS_CLIENT_COLUMNS,
@@ -933,7 +933,7 @@ def find_host(dispatcher, filter_key=None, filter_value=None):
         dispatcher.send_error(f"You've entered an invalid {filter_key.upper()}")
         return CommandStatusChoices.STATUS_FAILED
 
-    filter_api = {filter_key: ["ieq", filter_value]}
+    filter_api = {filter_key: [EQ, filter_value]}
     inventory_hosts = ipfabric_api.client.fetch(
         ADDRESSING_HOSTS_URL,
         columns=ADDRESSING_HOSTS_COLUMNS,
