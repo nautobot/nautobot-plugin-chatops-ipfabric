@@ -11,6 +11,82 @@ LAST = "$last"
 PREV = "$prev"
 LAST_LOCKED = "$lastLocked"
 
+# URLs
+INVENTORY_DEVICES_URL = "tables/inventory/devices"
+INTERFACE_LOAD_URL = "tables/interfaces/load"
+INTERFACE_ERRORS_URL = "tables/interfaces/errors/bidirectional"
+INTERFACE_DROPS_URL = "tables/interfaces/drops/bidirectional"
+BGP_NEIGHBORS_URL = "tables/routing/protocols/bgp/neighbors"
+WIRELESS_SSID_URL = "tables/wireless/radio"
+WIRELESS_CLIENT_URL = "tables/wireless/clients"
+ADDRESSING_HOSTS_URL = "tables/addressing/hosts"
+
+# COLUMNS
+INVENTORY_COLUMNS = [
+    "hostname",
+    "siteName",
+    "vendor",
+    "platform",
+    "model",
+    "memoryUtilization",
+    "version",
+    "sn",
+    "loginIp",
+]
+DEVICE_INFO_COLUMNS = ["hostname", "siteName", "vendor", "platform", "model"]
+INTERFACE_LOAD_COLUMNS = ["intName", "inBytes", "outBytes"]
+INTERFACE_ERRORS_COLUMNS = ["intName", "errPktsPct", "errRate"]
+INTERFACE_DROPS_COLUMNS = ["intName", "dropsPktsPct", "dropsRate"]
+BGP_NEIGHBORS_COLUMNS = [
+    "hostname",
+    "localAs",
+    "srcInt",
+    "localAddress",
+    "vrf",
+    "neiHostname",
+    "neiAddress",
+    "neiAs",
+    "state",
+    "totalReceivedPrefixes",
+]
+WIRELESS_SSID_COLUMNS = [
+    "wlanSsid",
+    "siteName",
+    "apName",
+    "radioDscr",
+    "radioStatus",
+    "clientCount",
+]
+WIRELESS_CLIENT_COLUMNS = [
+    "controller",
+    "siteName",
+    "apName",
+    "client",
+    "clientIp",
+    "ssid",
+    "rssi",
+    "signalToNoiseRatio",
+    "state",
+]
+ADDRESSING_HOSTS_COLUMNS = [
+    "ip",
+    "vrf",
+    "dnsName",
+    "siteName",
+    "edges",
+    "gateways",
+    "accessPoints",
+    "mac",
+    "vendor",
+    "vlan",
+]
+
+# Filters
+EQ = "ieq"
+
+# Sort
+INTERFACE_SORT = {"order": "desc", "column": "intName"}
+
 logger = logging.getLogger("rq.worker")
 
 

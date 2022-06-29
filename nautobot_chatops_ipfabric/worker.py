@@ -17,6 +17,25 @@ from .ipfabric_wrapper import (
     IpFabric,
     LAST,
     DEFAULT_PAGE_LIMIT,
+    INVENTORY_DEVICES_URL,
+    INTERFACE_LOAD_URL,
+    INTERFACE_ERRORS_URL,
+    INTERFACE_DROPS_URL,
+    BGP_NEIGHBORS_URL,
+    WIRELESS_SSID_URL,
+    WIRELESS_CLIENT_URL,
+    ADDRESSING_HOSTS_URL,
+    INVENTORY_COLUMNS,
+    DEVICE_INFO_COLUMNS,
+    INTERFACE_LOAD_COLUMNS,
+    INTERFACE_ERRORS_COLUMNS,
+    INTERFACE_DROPS_COLUMNS,
+    BGP_NEIGHBORS_COLUMNS,
+    WIRELESS_SSID_COLUMNS,
+    WIRELESS_CLIENT_COLUMNS,
+    ADDRESSING_HOSTS_COLUMNS,
+    EQ,
+    INTERFACE_SORT,
 )
 from .context import get_context, set_context
 from .utils import parse_hosts
@@ -26,82 +45,6 @@ IPFABRIC_LOGO_PATH = "ipfabric/ipfabric_logo.png"
 IPFABRIC_LOGO_ALT = "IPFabric Logo"
 CHATOPS_IPFABRIC = "nautobot_chatops_ipfabric"
 EMPTY = "(empty)"
-
-# URLs
-INVENTORY_DEVICES_URL = "tables/inventory/devices"
-INTERFACE_LOAD_URL = "tables/interfaces/load"
-INTERFACE_ERRORS_URL = "tables/interfaces/errors/bidirectional"
-INTERFACE_DROPS_URL = "tables/interfaces/drops/bidirectional"
-BGP_NEIGHBORS_URL = "tables/routing/protocols/bgp/neighbors"
-WIRELESS_SSID_URL = "tables/wireless/radio"
-WIRELESS_CLIENT_URL = "tables/wireless/clients"
-ADDRESSING_HOSTS_URL = "tables/addressing/hosts"
-
-# COLUMNS
-INVENTORY_COLUMNS = [
-    "hostname",
-    "siteName",
-    "vendor",
-    "platform",
-    "model",
-    "memoryUtilization",
-    "version",
-    "sn",
-    "loginIp",
-]
-DEVICE_INFO_COLUMNS = ["hostname", "siteName", "vendor", "platform", "model"]
-INTERFACE_LOAD_COLUMNS = ["intName", "inBytes", "outBytes"]
-INTERFACE_ERRORS_COLUMNS = ["intName", "errPktsPct", "errRate"]
-INTERFACE_DROPS_COLUMNS = ["intName", "dropsPktsPct", "dropsRate"]
-BGP_NEIGHBORS_COLUMNS = [
-    "hostname",
-    "localAs",
-    "srcInt",
-    "localAddress",
-    "vrf",
-    "neiHostname",
-    "neiAddress",
-    "neiAs",
-    "state",
-    "totalReceivedPrefixes",
-]
-WIRELESS_SSID_COLUMNS = [
-    "wlanSsid",
-    "siteName",
-    "apName",
-    "radioDscr",
-    "radioStatus",
-    "clientCount",
-]
-WIRELESS_CLIENT_COLUMNS = [
-    "controller",
-    "siteName",
-    "apName",
-    "client",
-    "clientIp",
-    "ssid",
-    "rssi",
-    "signalToNoiseRatio",
-    "state",
-]
-ADDRESSING_HOSTS_COLUMNS = [
-    "ip",
-    "vrf",
-    "dnsName",
-    "siteName",
-    "edges",
-    "gateways",
-    "accessPoints",
-    "mac",
-    "vendor",
-    "vlan",
-]
-
-# Filters
-EQ = "ieq"
-
-# Sort
-INTERFACE_SORT = {"order": "desc", "column": "intName"}
 
 logger = logging.getLogger("rq.worker")
 
@@ -396,7 +339,7 @@ def get_int_errors(dispatcher, device, snapshot_id):
     dispatcher.send_markdown(f"Load in interfaces for *{device}* in snapshot *{snapshot_id}*.")
     filter_api = {"hostname": [EQ, device]}
     int_errors = ipfabric_api.client.fetch(
-        INTERFACE_LOAD_URL,
+        INTERFACE_ERRORS_URL,
         columns=INTERFACE_ERRORS_COLUMNS,
         filters=filter_api,
         limit=DEFAULT_PAGE_LIMIT,
@@ -440,7 +383,7 @@ def get_int_drops(dispatcher, device, snapshot_id):
     dispatcher.send_markdown(f"Load in interfaces for *{device}* in snapshot *{snapshot_id}*.")
     filter_api = {"hostname": [EQ, device]}
     int_drops = ipfabric_api.client.fetch(
-        INTERFACE_LOAD_URL,
+        INTERFACE_DROPS_URL,
         columns=INTERFACE_DROPS_COLUMNS,
         filters=filter_api,
         limit=DEFAULT_PAGE_LIMIT,
