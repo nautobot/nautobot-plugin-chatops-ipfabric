@@ -175,15 +175,14 @@ def get_snapshot(dispatcher):
 @subcommand_of("ipfabric")
 def get_inventory(dispatcher, filter_key=None, filter_value=None):
     """IP Fabric Inventory device list."""
+    sub_cmd = "get-inventory"
     if not filter_key:
-        prompt_inventory_filter_keys(
-            f"{BASE_CMD} get-inventory", "Select column name to filter inventory by:", dispatcher
-        )
+        prompt_inventory_filter_keys(f"{BASE_CMD} {sub_cmd}", "Select column name to filter inventory by:", dispatcher)
         return False
 
     if not filter_value:
         prompt_inventory_filter_values(
-            f"{BASE_CMD} get-inventory {filter_key}",
+            f"{BASE_CMD} {sub_cmd} {filter_key}",
             f"Select specific {filter_key} to filter by:",
             dispatcher,
             filter_key,
@@ -203,8 +202,8 @@ def get_inventory(dispatcher, filter_key=None, filter_value=None):
     dispatcher.send_blocks(
         [
             *dispatcher.command_response_header(
-                "ipfabric",
-                "get-inventory",
+                f"{BASE_CMD}",
+                f"{sub_cmd}",
                 [("Filter key", filter_key), ("Filter value", filter_value)],
                 "Device Inventory",
                 ipfabric_logo(dispatcher),
@@ -217,15 +216,15 @@ def get_inventory(dispatcher, filter_key=None, filter_value=None):
         ["Hostname", "Site", "Vendor", "Platform", "Model", "Memory Utilization", "S/W Version", "Serial", "Mgmt IP"],
         [
             (
-                device.get("hostname") or EMPTY,
-                device.get("siteName") or EMPTY,
-                device.get("vendor") or EMPTY,
-                device.get("platform") or EMPTY,
-                device.get("model") or EMPTY,
-                device.get("memoryUtilization") or EMPTY,
-                device.get("version") or EMPTY,
-                device.get("sn") or EMPTY,
-                device.get("loginIp") or EMPTY,
+                device.get(INVENTORY_COLUMNS[0]) or EMPTY,
+                device.get(INVENTORY_COLUMNS[1]) or EMPTY,
+                device.get(INVENTORY_COLUMNS[2]) or EMPTY,
+                device.get(INVENTORY_COLUMNS[3]) or EMPTY,
+                device.get(INVENTORY_COLUMNS[4]) or EMPTY,
+                device.get(INVENTORY_COLUMNS[5]) or EMPTY,
+                device.get(INVENTORY_COLUMNS[6]) or EMPTY,
+                device.get(INVENTORY_COLUMNS[7]) or EMPTY,
+                device.get(INVENTORY_COLUMNS[8]) or EMPTY,
             )
             for device in devices
         ],
@@ -248,8 +247,11 @@ def interfaces(dispatcher, device=None, metric=None):
         limit=DEFAULT_PAGE_LIMIT,
         snapshot_id=get_user_snapshot(dispatcher),
     )
-    devices = [(device["hostname"], device["hostname"].lower()) for device in inventory_data]
+    devices = [
+        (inventory_device["hostname"], inventory_device["hostname"].lower()) for inventory_device in inventory_data
+    ]
     metrics = ["load", "errors", "drops"]
+    metric_choices = [(intf_metric.capitalize(), intf_metric) for intf_metric in metrics]
 
     if not devices:
         dispatcher.send_blocks(
@@ -278,8 +280,8 @@ def interfaces(dispatcher, device=None, metric=None):
         {
             "type": "select",
             "label": "Metric",
-            "choices": [(metric.capitalize(), metric) for metric in metrics],
-            "default": metrics[0],
+            "choices": metric_choices,
+            "default": metric_choices[0],
         },
     ]
 
@@ -287,7 +289,8 @@ def interfaces(dispatcher, device=None, metric=None):
         dispatcher.multi_input_dialog(f"{BASE_CMD}", f"{sub_cmd}", "Interface Metrics", dialog_list)
         return CommandStatusChoices.STATUS_SUCCEEDED
 
-    cmd_map = {metric[0]: get_int_load, metric[1]: get_int_errors, metric[2]: get_int_drops}
+    # cmd_map = {metrics[0]: get_int_load, metrics[1]: get_int_errors, metrics[2]: get_int_drops}
+    cmd_map = {"load": get_int_load, "errors": get_int_errors, "drops": get_int_drops}
     cmd_map[metric](dispatcher, device, snapshot_id)
     return True
 
@@ -580,7 +583,7 @@ def routing(dispatcher, device=None, protocol=None, filter_opt=None):
     ]
 
     if not all([protocol, device]):
-        dispatcher.multi_input_dialog(f"{BASE_CMD}", "routing", "Routing Info", dialog_list)
+        dispatcher.multi_input_dialog(f"{BASE_CMD}", f"{sub_cmd}", "Routing Info", dialog_list)
         return False
 
     cmd_map = {"bgp-neighbors": get_bgp_neighbors}
