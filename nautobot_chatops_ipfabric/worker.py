@@ -317,7 +317,7 @@ def get_int_load(dispatcher, device, snapshot_id):
                 "interface load data",
                 ipfabric_logo(dispatcher),
             ),
-            dispatcher.markdown_block(f"{str(ipfabric_api.client.base_url)}/technology/interfaces/rate/inbound"),
+            dispatcher.markdown_block(f"{str(ipfabric_api.client.base_url)}technology/interfaces/rate/inbound"),
         ]
     )
 
@@ -360,7 +360,7 @@ def get_int_errors(dispatcher, device, snapshot_id):
                 ipfabric_logo(dispatcher),
             ),
             dispatcher.markdown_block(
-                f"{str(ipfabric_api.client.base_url)}/technology/interfaces/error-rates/bidirectional"
+                f"{str(ipfabric_api.client.base_url)}technology/interfaces/error-rates/bidirectional"
             ),
         ]
     )
@@ -404,7 +404,7 @@ def get_int_drops(dispatcher, device, snapshot_id):
                 ipfabric_logo(dispatcher),
             ),
             dispatcher.markdown_block(
-                f"{str(ipfabric_api.client.base_url)}/technology/interfaces/drop-rates/bidirectional"
+                f"{str(ipfabric_api.client.base_url)}technology/interfaces/drop-rates/bidirectional"
             ),
         ]
     )
