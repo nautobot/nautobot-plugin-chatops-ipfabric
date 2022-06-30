@@ -116,7 +116,7 @@ class IpFabric:
             verify=verify,
             timeout=timeout,
         )
-        self.ui_url = str(self.client.base_url).split("api")[0]
+        self.ui_url = str(self.client.base_url).split("api", maxsplit=1)[0]
 
     def get_formatted_snapshots(self):
         """Get all snapshots and format them for display in chatops choice menu.
@@ -152,6 +152,6 @@ class IpFabric:
                 self.client.snapshots[snap_id].version or EMPTY,
                 getattr(self.client.snapshots[snap_id], "note", None) or EMPTY,  # TODO: Note being added to ipf v5.0
             )
-            for snap_id in formatted_snapshots.keys()
+            for snap_id in formatted_snapshots
         ]
         return list(formatted_snapshots.values()), snapshot_table
