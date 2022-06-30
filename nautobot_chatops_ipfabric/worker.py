@@ -22,7 +22,6 @@ BASE_CMD = "ipfabric"
 IPFABRIC_LOGO_PATH = "ipfabric/ipfabric_logo.png"
 IPFABRIC_LOGO_ALT = "IPFabric Logo"
 CHATOPS_IPFABRIC = "nautobot_chatops_ipfabric"
-EMPTY = "(empty)"
 
 logger = logging.getLogger("rq.worker")
 
@@ -61,7 +60,9 @@ def ipfabric(subcommand, **kwargs):
 
 def prompt_snapshot_id(action_id, help_text, dispatcher, choices=None):
     """Prompt the user for snapshot ID."""
-    choices = ipfabric_api.get_formatted_snapshots()
+    formatted_snapshots = ipfabric_api.get_formatted_snapshots()
+    get_snapshots_table(dispatcher, formatted_snapshots)
+    choices = list(formatted_snapshots.values())
     default = choices[0]
 
     return dispatcher.prompt_from_menu(action_id, help_text, choices, default=default)
@@ -109,20 +110,43 @@ def get_user_snapshot(dispatcher):
     return snapshot
 
 
+def get_snapshots_table(dispatcher, formatted_snapshots=None):
+    """IP Fabric Loaded Snapshot list."""
+    user = dispatcher.context["user_id"]
+    sub_cmd = "get-loaded-snapshots"
+    snapshot_table = ipfabric_api.get_snapshots_table(formatted_snapshots)
+
+    dispatcher.send_markdown(
+        f"<@{user}>, here are the Loaded Snapshots you requested.\n"
+        f"Shortcut: `/{BASE_CMD} {sub_cmd}`\n"
+        f"{ipfabric_api.ui_url}snapshot-management"
+    )
+
+    dispatcher.send_large_table(
+        ["Snapshot ID", "Name", "Start", "End", "Device Count", "Licensed Count", "Locked", "Version", "Note"],
+        snapshot_table,
+        title="Available IP Fabric Snapshots",
+    )
+
+    return True
+
+
 @subcommand_of("ipfabric")
-def set_snapshot(dispatcher, snapshot=None):
+def set_snapshot(dispatcher, snapshot: str = None):
     """Set snapshot as reference for commands."""
+    ipfabric_api.client.update()
     if not snapshot:
         prompt_snapshot_id(f"{BASE_CMD} set-snapshot", "What snapshot are you interested in?", dispatcher)
         return False
 
+    snapshot = snapshot.lower()
+    snapshot = LAST_LOCKED if snapshot == "$lastlocked" else snapshot
     user = dispatcher.context["user_id"]
-    snapshots = ipfabric_api.client.get_snapshots()
 
-    if snapshot not in snapshots:
+    if snapshot not in ipfabric_api.client.snapshots:
         dispatcher.send_markdown(f"<@{user}>, snapshot *{snapshot}* does not exist in IP Fabric.")
         return False
-    snapshot_id = snapshots[snapshot].snapshot_id
+    snapshot_id = ipfabric_api.client.snapshots[snapshot].snapshot_id
     set_context(user, {"snapshot": snapshot_id})
 
     dispatcher.send_markdown(
@@ -145,6 +169,12 @@ def get_snapshot(dispatcher):
         )
 
     return True
+
+
+@subcommand_of("ipfabric")
+def get_loaded_snapshots(dispatcher):
+    """IP Fabric Loaded Snapshot list."""
+    return get_snapshots_table(dispatcher)
 
 
 # DEVICES COMMAND
@@ -186,7 +216,7 @@ def get_inventory(dispatcher, filter_key=None, filter_value=None):
                 "Device Inventory",
                 ipfabric_logo(dispatcher),
             ),
-            dispatcher.markdown_block(f"{ipfabric_api.client.base_url}inventory/devices"),
+            dispatcher.markdown_block(f"{ipfabric_api.ui_url}inventory/devices"),
         ]
     )
 
@@ -194,15 +224,15 @@ def get_inventory(dispatcher, filter_key=None, filter_value=None):
         ["Hostname", "Site", "Vendor", "Platform", "Model", "Memory Utilization", "S/W Version", "Serial", "Mgmt IP"],
         [
             (
-                device.get(IpFabric.INVENTORY_COLUMNS[0]) or EMPTY,
-                device.get(IpFabric.INVENTORY_COLUMNS[1]) or EMPTY,
-                device.get(IpFabric.INVENTORY_COLUMNS[2]) or EMPTY,
-                device.get(IpFabric.INVENTORY_COLUMNS[3]) or EMPTY,
-                device.get(IpFabric.INVENTORY_COLUMNS[4]) or EMPTY,
-                device.get(IpFabric.INVENTORY_COLUMNS[5]) or EMPTY,
-                device.get(IpFabric.INVENTORY_COLUMNS[6]) or EMPTY,
-                device.get(IpFabric.INVENTORY_COLUMNS[7]) or EMPTY,
-                device.get(IpFabric.INVENTORY_COLUMNS[8]) or EMPTY,
+                device.get(IpFabric.INVENTORY_COLUMNS[0]) or IpFabric.EMPTY,
+                device.get(IpFabric.INVENTORY_COLUMNS[1]) or IpFabric.EMPTY,
+                device.get(IpFabric.INVENTORY_COLUMNS[2]) or IpFabric.EMPTY,
+                device.get(IpFabric.INVENTORY_COLUMNS[3]) or IpFabric.EMPTY,
+                device.get(IpFabric.INVENTORY_COLUMNS[4]) or IpFabric.EMPTY,
+                device.get(IpFabric.INVENTORY_COLUMNS[5]) or IpFabric.EMPTY,
+                device.get(IpFabric.INVENTORY_COLUMNS[6]) or IpFabric.EMPTY,
+                device.get(IpFabric.INVENTORY_COLUMNS[7]) or IpFabric.EMPTY,
+                device.get(IpFabric.INVENTORY_COLUMNS[8]) or IpFabric.EMPTY,
             )
             for device in devices
         ],
@@ -294,7 +324,7 @@ def get_int_load(dispatcher, device, snapshot_id):
                 "interface load data",
                 ipfabric_logo(dispatcher),
             ),
-            dispatcher.markdown_block(f"{str(ipfabric_api.client.base_url)}technology/interfaces/rate/inbound"),
+            dispatcher.markdown_block(f"{str(ipfabric_api.ui_url)}technology/interfaces/rate/inbound"),
         ]
     )
 
@@ -336,9 +366,7 @@ def get_int_errors(dispatcher, device, snapshot_id):
                 "interface error data",
                 ipfabric_logo(dispatcher),
             ),
-            dispatcher.markdown_block(
-                f"{str(ipfabric_api.client.base_url)}technology/interfaces/error-rates/bidirectional"
-            ),
+            dispatcher.markdown_block(f"{str(ipfabric_api.ui_url)}technology/interfaces/error-rates/bidirectional"),
         ]
     )
 
@@ -380,9 +408,7 @@ def get_int_drops(dispatcher, device, snapshot_id):
                 "interface average drop data",
                 ipfabric_logo(dispatcher),
             ),
-            dispatcher.markdown_block(
-                f"{str(ipfabric_api.client.base_url)}technology/interfaces/drop-rates/bidirectional"
-            ),
+            dispatcher.markdown_block(f"{str(ipfabric_api.ui_url)}technology/interfaces/drop-rates/bidirectional"),
         ]
     )
 
@@ -469,7 +495,7 @@ def pathlookup(
                 "Path Lookup",
                 ipfabric_logo(dispatcher),
             ),
-            dispatcher.markdown_block(f"{ipfabric_api.client.base_url}diagrams/pathlookup"),
+            dispatcher.markdown_block(f"{ipfabric_api.ui_url}diagrams/pathlookup"),
         ]
     )
 
@@ -610,7 +636,7 @@ def get_bgp_neighbors(dispatcher, device=None, snapshot_id=None, state=None):
                 "BGP neighbor data",
                 ipfabric_logo(dispatcher),
             ),
-            dispatcher.markdown_block(f"{ipfabric_api.client.base_url}technology/routing/bgp/neighbors"),
+            dispatcher.markdown_block(f"{ipfabric_api.ui_url}technology/routing/bgp/neighbors"),
         ]
     )
 
@@ -722,7 +748,7 @@ def get_wireless_ssids(dispatcher, ssid=None, snapshot_id=None):
                 "Wireless info for SSIDs",
                 ipfabric_logo(dispatcher),
             ),
-            dispatcher.markdown_block(f"{ipfabric_api.client.base_url}api/v1/tables/wireless/clients"),
+            dispatcher.markdown_block(f"{ipfabric_api.ui_url}api/v1/tables/wireless/clients"),
         ]
     )
     dispatcher.send_large_table(
@@ -803,7 +829,7 @@ def get_wireless_clients(dispatcher, ssid=None, snapshot_id=None):
                 "Wireless Client info by SSID",
                 ipfabric_logo(dispatcher),
             ),
-            dispatcher.markdown_block(f"{ipfabric_api.client.base_url}api/v1/tables/wireless/clients"),
+            dispatcher.markdown_block(f"{ipfabric_api.ui_url}api/v1/tables/wireless/clients"),
         ]
     )
 
@@ -879,7 +905,7 @@ def find_host(dispatcher, filter_key=None, filter_value=None):
                 "Host Inventory",
                 ipfabric_logo(dispatcher),
             ),
-            dispatcher.markdown_block(f"{ipfabric_api.client.base_url}inventory/hosts"),
+            dispatcher.markdown_block(f"{ipfabric_api.ui_url}inventory/hosts"),
         ]
     )
 
@@ -887,16 +913,16 @@ def find_host(dispatcher, filter_key=None, filter_value=None):
         ["Host IP", "VRF", "Host DNS", "Site", "Edges", "Gateways", "Access Points", "Host MAC", "Vendor", "VLAN"],
         [
             (
-                host.get(IpFabric.ADDRESSING_HOSTS_COLUMNS[0]) or EMPTY,
-                host.get(IpFabric.ADDRESSING_HOSTS_COLUMNS[1]) or EMPTY,
-                host.get(IpFabric.ADDRESSING_HOSTS_COLUMNS[2]) or EMPTY,
-                host.get(IpFabric.ADDRESSING_HOSTS_COLUMNS[3]) or EMPTY,
-                host.get(IpFabric.ADDRESSING_HOSTS_COLUMNS[4]) or EMPTY,
-                host.get(IpFabric.ADDRESSING_HOSTS_COLUMNS[5]) or EMPTY,
-                host.get(IpFabric.ADDRESSING_HOSTS_COLUMNS[6]) or EMPTY,
-                host.get(IpFabric.ADDRESSING_HOSTS_COLUMNS[7]) or EMPTY,
-                host.get(IpFabric.ADDRESSING_HOSTS_COLUMNS[8]) or EMPTY,
-                host.get(IpFabric.ADDRESSING_HOSTS_COLUMNS[9]) or EMPTY,
+                host.get(IpFabric.ADDRESSING_HOSTS_COLUMNS[0]) or IpFabric.EMPTY,
+                host.get(IpFabric.ADDRESSING_HOSTS_COLUMNS[1]) or IpFabric.EMPTY,
+                host.get(IpFabric.ADDRESSING_HOSTS_COLUMNS[2]) or IpFabric.EMPTY,
+                host.get(IpFabric.ADDRESSING_HOSTS_COLUMNS[3]) or IpFabric.EMPTY,
+                host.get(IpFabric.ADDRESSING_HOSTS_COLUMNS[4]) or IpFabric.EMPTY,
+                host.get(IpFabric.ADDRESSING_HOSTS_COLUMNS[5]) or IpFabric.EMPTY,
+                host.get(IpFabric.ADDRESSING_HOSTS_COLUMNS[6]) or IpFabric.EMPTY,
+                host.get(IpFabric.ADDRESSING_HOSTS_COLUMNS[7]) or IpFabric.EMPTY,
+                host.get(IpFabric.ADDRESSING_HOSTS_COLUMNS[8]) or IpFabric.EMPTY,
+                host.get(IpFabric.ADDRESSING_HOSTS_COLUMNS[9]) or IpFabric.EMPTY,
             )
             for host in hosts
         ],
