@@ -5,6 +5,8 @@ import logging
 from ipfabric_diagrams import IPFDiagram
 from ipfabric import IPFClient
 
+EMPTY = "(empty)"
+
 # Default IP Fabric API pagination limit
 DEFAULT_PAGE_LIMIT = 100
 LAST = "$last"
@@ -114,23 +116,53 @@ class IpFabric:
             verify=verify,
             timeout=timeout,
         )
+        self.ui_url = str(self.client.base_url).split("api", maxsplit=1)[0]
 
     def get_formatted_snapshots(self):
-        """Get all snapshots and format them for display in chatops choice menu.
+        """Get all loaded snapshots and format them for display in chatops choice menu.
 
         Returns:
-            list: Snapshot objects as tuple (description, snapshot_id)
+            dict: Snapshot objects as dict of tuples {snapshot_ref: (description, snapshot_id)}
         """
-        formatted_snapshots = []
+        formatted_snapshots = {}
+        snapshot_refs = []
         for snapshot_ref, snapshot in self.client.snapshots.items():
             if snapshot.state != "loaded":
                 continue
             description = "🔒 " if snapshot.locked else ""
             if snapshot_ref in [LAST, PREV, LAST_LOCKED]:
                 description += f"{snapshot_ref}: "
+                snapshot_refs.append(snapshot_ref)
             if snapshot.name:
                 description += snapshot.name + " - " + snapshot.end.strftime("%d-%b-%y %H:%M:%S")
             else:
                 description += snapshot.end.strftime("%d-%b-%y %H:%M:%S") + " - " + snapshot.snapshot_id
-            formatted_snapshots.append((description, snapshot.snapshot_id))
+            formatted_snapshots[snapshot_ref] = (description, snapshot.snapshot_id)
+        for ref in snapshot_refs:
+            formatted_snapshots.pop(formatted_snapshots[ref][1], None)
+
         return formatted_snapshots
+
+    def get_snapshots_table(self, formatted_snapshots=None):
+        """Get all snapshots and format them for display in chatops table.
+
+        Returns:
+            list: Snapshot descriptions as list of as tuple [(data, data, ...)]
+        """
+        formatted_snapshots = formatted_snapshots if formatted_snapshots else self.get_formatted_snapshots()
+
+        snapshot_table = [
+            (
+                snap_id,
+                self.client.snapshots[snap_id].name or EMPTY,
+                self.client.snapshots[snap_id].start.strftime("%d-%b-%y %H:%M:%S"),
+                self.client.snapshots[snap_id].end.strftime("%d-%b-%y %H:%M:%S"),
+                self.client.snapshots[snap_id].count,
+                self.client.snapshots[snap_id].licensed_count,
+                str(self.client.snapshots[snap_id].locked),
+                self.client.snapshots[snap_id].version or EMPTY,
+                getattr(self.client.snapshots[snap_id], "note", None) or EMPTY,  # TODO: Note being added to ipf v5.0
+            )
+            for snap_id in formatted_snapshots
+        ]
+        return snapshot_table
