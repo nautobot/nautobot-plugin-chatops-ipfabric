@@ -13,30 +13,8 @@ from netutils.ip import is_ip
 from netutils.mac import is_valid_mac
 from ipfabric_diagrams import Unicast
 
-from .ipfabric_wrapper import (
-    IpFabric,
-    LAST,
-    DEFAULT_PAGE_LIMIT,
-    INVENTORY_DEVICES_URL,
-    INTERFACE_LOAD_URL,
-    INTERFACE_ERRORS_URL,
-    INTERFACE_DROPS_URL,
-    BGP_NEIGHBORS_URL,
-    WIRELESS_SSID_URL,
-    WIRELESS_CLIENT_URL,
-    ADDRESSING_HOSTS_URL,
-    INVENTORY_COLUMNS,
-    DEVICE_INFO_COLUMNS,
-    INTERFACE_LOAD_COLUMNS,
-    INTERFACE_ERRORS_COLUMNS,
-    INTERFACE_DROPS_COLUMNS,
-    BGP_NEIGHBORS_COLUMNS,
-    WIRELESS_SSID_COLUMNS,
-    WIRELESS_CLIENT_COLUMNS,
-    ADDRESSING_HOSTS_COLUMNS,
-    EQ,
-    INTERFACE_SORT,
-)
+from .ipfabric_wrapper import IpFabric
+
 from .context import get_context, set_context
 from .utils import parse_hosts
 
@@ -93,9 +71,9 @@ def prompt_inventory_filter_values(action_id, help_text, dispatcher, filter_key,
     """Prompt the user for input inventory search value selection."""
     column_name = inventory_field_mapping.get(filter_key.lower())
     inventory_data = ipfabric_api.client.fetch(
-        INVENTORY_DEVICES_URL,
-        columns=DEVICE_INFO_COLUMNS,
-        limit=DEFAULT_PAGE_LIMIT,
+        IpFabric.INVENTORY_DEVICES_URL,
+        columns=IpFabric.DEVICE_INFO_COLUMNS,
+        limit=IpFabric.DEFAULT_PAGE_LIMIT,
         snapshot_id=get_user_snapshot(dispatcher),
     )
     choices = {(device[column_name], device[column_name]) for device in inventory_data if device.get(column_name)}
@@ -125,7 +103,7 @@ def get_user_snapshot(dispatcher):
     context = get_context(dispatcher.context["user_id"])
     snapshot = context.get("snapshot")
     if not snapshot:
-        snapshot = ipfabric_api.client.snapshots[LAST].snapshot_id
+        snapshot = ipfabric_api.client.snapshots[IpFabric.LAST].snapshot_id
         set_context(dispatcher.context["user_id"], {"snapshot": snapshot})
 
     return snapshot
@@ -190,12 +168,12 @@ def get_inventory(dispatcher, filter_key=None, filter_value=None):
         return False
 
     col_name = inventory_field_mapping.get(filter_key.lower())
-    filter_api = {col_name: [EQ, filter_value]}
+    filter_api = {col_name: [IpFabric.IEQ, filter_value]}
     devices = ipfabric_api.client.fetch(
-        INVENTORY_DEVICES_URL,
-        columns=INVENTORY_COLUMNS,
+        IpFabric.INVENTORY_DEVICES_URL,
+        columns=IpFabric.INVENTORY_COLUMNS,
         filters=filter_api,
-        limit=DEFAULT_PAGE_LIMIT,
+        limit=IpFabric.DEFAULT_PAGE_LIMIT,
         snapshot_id=get_user_snapshot(dispatcher),
     )
 
@@ -216,15 +194,15 @@ def get_inventory(dispatcher, filter_key=None, filter_value=None):
         ["Hostname", "Site", "Vendor", "Platform", "Model", "Memory Utilization", "S/W Version", "Serial", "Mgmt IP"],
         [
             (
-                device.get(INVENTORY_COLUMNS[0]) or EMPTY,
-                device.get(INVENTORY_COLUMNS[1]) or EMPTY,
-                device.get(INVENTORY_COLUMNS[2]) or EMPTY,
-                device.get(INVENTORY_COLUMNS[3]) or EMPTY,
-                device.get(INVENTORY_COLUMNS[4]) or EMPTY,
-                device.get(INVENTORY_COLUMNS[5]) or EMPTY,
-                device.get(INVENTORY_COLUMNS[6]) or EMPTY,
-                device.get(INVENTORY_COLUMNS[7]) or EMPTY,
-                device.get(INVENTORY_COLUMNS[8]) or EMPTY,
+                device.get(IpFabric.INVENTORY_COLUMNS[0]) or EMPTY,
+                device.get(IpFabric.INVENTORY_COLUMNS[1]) or EMPTY,
+                device.get(IpFabric.INVENTORY_COLUMNS[2]) or EMPTY,
+                device.get(IpFabric.INVENTORY_COLUMNS[3]) or EMPTY,
+                device.get(IpFabric.INVENTORY_COLUMNS[4]) or EMPTY,
+                device.get(IpFabric.INVENTORY_COLUMNS[5]) or EMPTY,
+                device.get(IpFabric.INVENTORY_COLUMNS[6]) or EMPTY,
+                device.get(IpFabric.INVENTORY_COLUMNS[7]) or EMPTY,
+                device.get(IpFabric.INVENTORY_COLUMNS[8]) or EMPTY,
             )
             for device in devices
         ],
@@ -242,9 +220,9 @@ def interfaces(dispatcher, device=None, metric=None):
     logger.debug("Getting devices")
     sub_cmd = "interfaces"
     inventory_data = ipfabric_api.client.fetch(
-        INVENTORY_DEVICES_URL,
-        columns=DEVICE_INFO_COLUMNS,
-        limit=DEFAULT_PAGE_LIMIT,
+        IpFabric.INVENTORY_DEVICES_URL,
+        columns=IpFabric.DEVICE_INFO_COLUMNS,
+        limit=IpFabric.DEFAULT_PAGE_LIMIT,
         snapshot_id=get_user_snapshot(dispatcher),
     )
     devices = [
@@ -289,8 +267,7 @@ def interfaces(dispatcher, device=None, metric=None):
         dispatcher.multi_input_dialog(f"{BASE_CMD}", f"{sub_cmd}", "Interface Metrics", dialog_list)
         return CommandStatusChoices.STATUS_SUCCEEDED
 
-    # cmd_map = {metrics[0]: get_int_load, metrics[1]: get_int_errors, metrics[2]: get_int_drops}
-    cmd_map = {"load": get_int_load, "errors": get_int_errors, "drops": get_int_drops}
+    cmd_map = {metrics[0]: get_int_load, metrics[1]: get_int_errors, metrics[2]: get_int_drops}
     cmd_map[metric](dispatcher, device, snapshot_id)
     return True
 
@@ -299,14 +276,14 @@ def get_int_load(dispatcher, device, snapshot_id):
     """Get interface load per device."""
     sub_cmd = "interfaces"
     dispatcher.send_markdown(f"Load in interfaces for *{device}* in snapshot *{snapshot_id}*.")
-    filter_api = {"hostname": [EQ, device]}
+    filter_api = {"hostname": [IpFabric.IEQ, device]}
     int_load = ipfabric_api.client.fetch(
-        INTERFACE_LOAD_URL,
-        columns=INTERFACE_LOAD_COLUMNS,
+        IpFabric.INTERFACE_LOAD_URL,
+        columns=IpFabric.INTERFACE_LOAD_COLUMNS,
         filters=filter_api,
-        limit=DEFAULT_PAGE_LIMIT,
+        limit=IpFabric.DEFAULT_PAGE_LIMIT,
         snapshot_id=get_user_snapshot(dispatcher),
-        sort=INTERFACE_SORT,
+        sort=IpFabric.INTERFACE_SORT,
     )
     dispatcher.send_blocks(
         [
@@ -325,9 +302,9 @@ def get_int_load(dispatcher, device, snapshot_id):
         ["IntName", "IN bps", "OUT bps"],
         [
             (
-                interface[INTERFACE_LOAD_COLUMNS[0]],
-                interface[INTERFACE_LOAD_COLUMNS[1]],
-                interface[INTERFACE_LOAD_COLUMNS[2]],
+                interface[IpFabric.INTERFACE_LOAD_COLUMNS[0]],
+                interface[IpFabric.INTERFACE_LOAD_COLUMNS[1]],
+                interface[IpFabric.INTERFACE_LOAD_COLUMNS[2]],
             )
             for interface in int_load
         ],
@@ -340,14 +317,14 @@ def get_int_errors(dispatcher, device, snapshot_id):
     """Get interface errors per device."""
     sub_cmd = "interfaces"
     dispatcher.send_markdown(f"Load in interfaces for *{device}* in snapshot *{snapshot_id}*.")
-    filter_api = {"hostname": [EQ, device]}
+    filter_api = {"hostname": [IpFabric.IEQ, device]}
     int_errors = ipfabric_api.client.fetch(
-        INTERFACE_ERRORS_URL,
-        columns=INTERFACE_ERRORS_COLUMNS,
+        IpFabric.INTERFACE_ERRORS_URL,
+        columns=IpFabric.INTERFACE_ERRORS_COLUMNS,
         filters=filter_api,
-        limit=DEFAULT_PAGE_LIMIT,
+        limit=IpFabric.DEFAULT_PAGE_LIMIT,
         snapshot_id=get_user_snapshot(dispatcher),
-        sort=INTERFACE_SORT,
+        sort=IpFabric.INTERFACE_SORT,
     )
 
     dispatcher.send_blocks(
@@ -369,9 +346,9 @@ def get_int_errors(dispatcher, device, snapshot_id):
         ["IntName", "Error %", "Error Rate"],
         [
             (
-                interface[INTERFACE_ERRORS_COLUMNS[0]],
-                interface[INTERFACE_ERRORS_COLUMNS[1]],
-                interface[INTERFACE_ERRORS_COLUMNS[2]],
+                interface[IpFabric.INTERFACE_ERRORS_COLUMNS[0]],
+                interface[IpFabric.INTERFACE_ERRORS_COLUMNS[1]],
+                interface[IpFabric.INTERFACE_ERRORS_COLUMNS[2]],
             )
             for interface in int_errors
         ],
@@ -384,14 +361,14 @@ def get_int_drops(dispatcher, device, snapshot_id):
     """Get bi-directional interface drops per device."""
     sub_cmd = "interfaces"
     dispatcher.send_markdown(f"Load in interfaces for *{device}* in snapshot *{snapshot_id}*.")
-    filter_api = {"hostname": [EQ, device]}
+    filter_api = {"hostname": [IpFabric.IEQ, device]}
     int_drops = ipfabric_api.client.fetch(
-        INTERFACE_DROPS_URL,
-        columns=INTERFACE_DROPS_COLUMNS,
+        IpFabric.INTERFACE_DROPS_URL,
+        columns=IpFabric.INTERFACE_DROPS_COLUMNS,
         filters=filter_api,
-        limit=DEFAULT_PAGE_LIMIT,
+        limit=IpFabric.DEFAULT_PAGE_LIMIT,
         snapshot_id=get_user_snapshot(dispatcher),
-        sort=INTERFACE_SORT,
+        sort=IpFabric.INTERFACE_SORT,
     )
 
     dispatcher.send_blocks(
@@ -413,9 +390,9 @@ def get_int_drops(dispatcher, device, snapshot_id):
         ["IntName", "% Drops", "Drop Rate"],
         [
             (
-                interface[INTERFACE_DROPS_COLUMNS[0]],
-                interface[INTERFACE_DROPS_COLUMNS[1]],
-                interface[INTERFACE_DROPS_COLUMNS[2]],
+                interface[IpFabric.INTERFACE_DROPS_COLUMNS[0]],
+                interface[IpFabric.INTERFACE_DROPS_COLUMNS[1]],
+                interface[IpFabric.INTERFACE_DROPS_COLUMNS[2]],
             )
             for interface in int_drops
         ],
@@ -424,7 +401,7 @@ def get_int_drops(dispatcher, device, snapshot_id):
     return True
 
 
-# END-TO-END PATH COMMMAND
+# PATH LOOKUP COMMMAND
 
 
 @subcommand_of("ipfabric")
@@ -548,9 +525,9 @@ def routing(dispatcher, device=None, protocol=None, filter_opt=None):
     logger.debug("Getting devices")
 
     inventory_devices = ipfabric_api.client.fetch(
-        INVENTORY_DEVICES_URL,
-        columns=DEVICE_INFO_COLUMNS,
-        limit=DEFAULT_PAGE_LIMIT,
+        IpFabric.INVENTORY_DEVICES_URL,
+        columns=IpFabric.DEVICE_INFO_COLUMNS,
+        limit=IpFabric.DEFAULT_PAGE_LIMIT,
         snapshot_id=get_user_snapshot(dispatcher),
     )
     devices = [(device["hostname"], device["hostname"]) for device in inventory_devices]
@@ -593,9 +570,10 @@ def routing(dispatcher, device=None, protocol=None, filter_opt=None):
 
 def get_bgp_neighbors(dispatcher, device=None, snapshot_id=None, state=None):
     """Get BGP neighbors by device."""
+    sub_cmd = "routing"
     if not state:
         dispatcher.prompt_from_menu(
-            f"{BASE_CMD} routing {device} bgp-neighbors",
+            f"{BASE_CMD} {sub_cmd} {device} bgp-neighbors",
             "BGP peer state",
             [
                 ("Any", "any"),
@@ -611,23 +589,23 @@ def get_bgp_neighbors(dispatcher, device=None, snapshot_id=None, state=None):
         return False
 
     if state != "any":
-        filter_api = {"and": [{"hostname": [EQ, device]}, {"state": [EQ, state]}]}
+        filter_api = {"and": [{"hostname": [IpFabric.IEQ, device]}, {"state": [IpFabric.IEQ, state]}]}
     else:
         filter_api = {"hostname": ["reg", device]}
 
     bgp_neighbors = ipfabric_api.client.fetch(
-        BGP_NEIGHBORS_URL,
-        columns=BGP_NEIGHBORS_COLUMNS,
+        IpFabric.BGP_NEIGHBORS_URL,
+        columns=IpFabric.BGP_NEIGHBORS_COLUMNS,
         filters=filter_api,
-        limit=DEFAULT_PAGE_LIMIT,
+        limit=IpFabric.DEFAULT_PAGE_LIMIT,
         snapshot_id=snapshot_id,
     )
 
     dispatcher.send_blocks(
         [
             *dispatcher.command_response_header(
-                "ipfabric",
-                "routing",
+                f"{BASE_CMD}",
+                f"{sub_cmd}",
                 [("Device", device), ("Protocol", "bgp-neighbors"), ("State", state)],
                 "BGP neighbor data",
                 ipfabric_logo(dispatcher),
@@ -651,16 +629,16 @@ def get_bgp_neighbors(dispatcher, device=None, snapshot_id=None, state=None):
         ],
         [
             (
-                neighbor[BGP_NEIGHBORS_COLUMNS[0]],
-                neighbor[BGP_NEIGHBORS_COLUMNS[1]],
-                neighbor[BGP_NEIGHBORS_COLUMNS[2]],
-                neighbor[BGP_NEIGHBORS_COLUMNS[3]],
-                neighbor[BGP_NEIGHBORS_COLUMNS[4]],
-                neighbor[BGP_NEIGHBORS_COLUMNS[5]],
-                neighbor[BGP_NEIGHBORS_COLUMNS[6]],
-                neighbor[BGP_NEIGHBORS_COLUMNS[7]],
-                neighbor[BGP_NEIGHBORS_COLUMNS[8]],
-                neighbor[BGP_NEIGHBORS_COLUMNS[9]],
+                neighbor[IpFabric.BGP_NEIGHBORS_COLUMNS[0]],
+                neighbor[IpFabric.BGP_NEIGHBORS_COLUMNS[1]],
+                neighbor[IpFabric.BGP_NEIGHBORS_COLUMNS[2]],
+                neighbor[IpFabric.BGP_NEIGHBORS_COLUMNS[3]],
+                neighbor[IpFabric.BGP_NEIGHBORS_COLUMNS[4]],
+                neighbor[IpFabric.BGP_NEIGHBORS_COLUMNS[5]],
+                neighbor[IpFabric.BGP_NEIGHBORS_COLUMNS[6]],
+                neighbor[IpFabric.BGP_NEIGHBORS_COLUMNS[7]],
+                neighbor[IpFabric.BGP_NEIGHBORS_COLUMNS[8]],
+                neighbor[IpFabric.BGP_NEIGHBORS_COLUMNS[9]],
             )
             for neighbor in bgp_neighbors
         ],
@@ -672,12 +650,13 @@ def get_bgp_neighbors(dispatcher, device=None, snapshot_id=None, state=None):
 @subcommand_of("ipfabric")
 def wireless(dispatcher, option=None, ssid=None):
     """Get wireless information by client or ssid."""
+    sub_cmd = "wireless"
     snapshot_id = get_user_snapshot(dispatcher)
     logger.debug("Getting SSIDs")
     ssids = ipfabric_api.client.fetch(
-        WIRELESS_SSID_URL,
-        columns=WIRELESS_SSID_COLUMNS,
-        limit=DEFAULT_PAGE_LIMIT,
+        IpFabric.WIRELESS_SSID_URL,
+        columns=IpFabric.WIRELESS_SSID_COLUMNS,
+        limit=IpFabric.DEFAULT_PAGE_LIMIT,
         snapshot_id=snapshot_id,
     )
 
@@ -686,7 +665,7 @@ def wireless(dispatcher, option=None, ssid=None):
             [
                 *dispatcher.command_response_header(
                     f"{BASE_CMD}",
-                    "wireless",
+                    f"{sub_cmd}",
                     [(" ", " ")],
                     "IPFabric Wireless",
                     ipfabric_logo(dispatcher),
@@ -698,7 +677,7 @@ def wireless(dispatcher, option=None, ssid=None):
 
     if not option:
         dispatcher.prompt_from_menu(
-            f"{BASE_CMD} wireless",
+            f"{BASE_CMD} {sub_cmd}",
             "Wireless Info",
             choices=[("ssids", "ssids"), ("clients", "clients")],
             default=("clients", "clients"),
@@ -712,18 +691,19 @@ def wireless(dispatcher, option=None, ssid=None):
 
 def get_wireless_ssids(dispatcher, ssid=None, snapshot_id=None):
     """Get All Wireless SSID Information."""
+    sub_cmd = "wireless"
     ssids = ipfabric_api.client.fetch(
-        WIRELESS_SSID_URL,
-        columns=WIRELESS_SSID_COLUMNS,
-        limit=DEFAULT_PAGE_LIMIT,
+        IpFabric.WIRELESS_SSID_URL,
+        columns=IpFabric.WIRELESS_SSID_COLUMNS,
+        limit=IpFabric.DEFAULT_PAGE_LIMIT,
         snapshot_id=snapshot_id,
     )
     if not ssids:
         dispatcher.send_blocks(
             [
                 *dispatcher.command_response_header(
-                    "ipfabric",
-                    "wireless ssids",
+                    f"{BASE_CMD}",
+                    f"{sub_cmd} ssids",
                     [("Error")],
                     "IPFabric Wireless",
                     ipfabric_logo(dispatcher),
@@ -736,8 +716,8 @@ def get_wireless_ssids(dispatcher, ssid=None, snapshot_id=None):
     dispatcher.send_blocks(
         [
             *dispatcher.command_response_header(
-                "ipfabric",
-                "wireless",
+                f"{BASE_CMD}",
+                f"{sub_cmd}",
                 [("Option", "ssids")],
                 "Wireless info for SSIDs",
                 ipfabric_logo(dispatcher),
@@ -756,12 +736,12 @@ def get_wireless_ssids(dispatcher, ssid=None, snapshot_id=None):
         ],
         [
             (
-                ssid[WIRELESS_SSID_COLUMNS[0]],
-                ssid[WIRELESS_SSID_COLUMNS[1]],
-                ssid[WIRELESS_SSID_COLUMNS[2]],
-                ssid[WIRELESS_SSID_COLUMNS[3]],
-                ssid[WIRELESS_SSID_COLUMNS[4]],
-                ssid[WIRELESS_SSID_COLUMNS[5]],
+                ssid[IpFabric.WIRELESS_SSID_COLUMNS[0]],
+                ssid[IpFabric.WIRELESS_SSID_COLUMNS[1]],
+                ssid[IpFabric.WIRELESS_SSID_COLUMNS[2]],
+                ssid[IpFabric.WIRELESS_SSID_COLUMNS[3]],
+                ssid[IpFabric.WIRELESS_SSID_COLUMNS[4]],
+                ssid[IpFabric.WIRELESS_SSID_COLUMNS[5]],
             )
             for ssid in ssids
         ],
@@ -771,10 +751,11 @@ def get_wireless_ssids(dispatcher, ssid=None, snapshot_id=None):
 
 def get_wireless_clients(dispatcher, ssid=None, snapshot_id=None):
     """Get Wireless Clients."""
+    sub_cmd = "wireless"
     wireless_ssids = ipfabric_api.client.fetch(
-        WIRELESS_SSID_URL,
-        columns=WIRELESS_SSID_COLUMNS,
-        limit=DEFAULT_PAGE_LIMIT,
+        IpFabric.WIRELESS_SSID_URL,
+        columns=IpFabric.WIRELESS_SSID_COLUMNS,
+        limit=IpFabric.DEFAULT_PAGE_LIMIT,
         snapshot_id=snapshot_id,
     )
     ssids = [
@@ -787,7 +768,7 @@ def get_wireless_clients(dispatcher, ssid=None, snapshot_id=None):
             [
                 *dispatcher.command_response_header(
                     f"{BASE_CMD}",
-                    "wireless clients",
+                    f"{sub_cmd} clients",
                     [(" ", " ")],
                     "IPFabric Wireless",
                     ipfabric_logo(dispatcher),
@@ -800,16 +781,16 @@ def get_wireless_clients(dispatcher, ssid=None, snapshot_id=None):
     # prompt for ssid or all
     if not ssid:
         dispatcher.prompt_from_menu(
-            f"{BASE_CMD} wireless clients", "Clients attached to an SSID", choices=ssids, default=ssids[0]
+            f"{BASE_CMD} {sub_cmd} clients", "Clients attached to an SSID", choices=ssids, default=ssids[0]
         )
         return False
 
-    filter_api = {"ssid": [EQ, ssid]} if ssid else {}
+    filter_api = {"ssid": [IpFabric.IEQ, ssid]} if ssid else {}
     clients = ipfabric_api.client.fetch(
-        WIRELESS_CLIENT_URL,
-        columns=WIRELESS_CLIENT_COLUMNS,
+        IpFabric.WIRELESS_CLIENT_URL,
+        columns=IpFabric.WIRELESS_CLIENT_COLUMNS,
         filters=filter_api,
-        limit=DEFAULT_PAGE_LIMIT,
+        limit=IpFabric.DEFAULT_PAGE_LIMIT,
         snapshot_id=snapshot_id,
     )
 
@@ -817,7 +798,7 @@ def get_wireless_clients(dispatcher, ssid=None, snapshot_id=None):
         [
             *dispatcher.command_response_header(
                 f"{BASE_CMD}",
-                "wireless",
+                f"{sub_cmd}",
                 [("Option", "clients"), ("SSID", ssid)],
                 "Wireless Client info by SSID",
                 ipfabric_logo(dispatcher),
@@ -840,15 +821,15 @@ def get_wireless_clients(dispatcher, ssid=None, snapshot_id=None):
         ],
         [
             (
-                client[WIRELESS_CLIENT_COLUMNS[0]],
-                client[WIRELESS_CLIENT_COLUMNS[1]],
-                client[WIRELESS_CLIENT_COLUMNS[2]],
-                client[WIRELESS_CLIENT_COLUMNS[3]],
-                client[WIRELESS_CLIENT_COLUMNS[4]],
-                client[WIRELESS_CLIENT_COLUMNS[5]],
-                client[WIRELESS_CLIENT_COLUMNS[6]],
-                client[WIRELESS_CLIENT_COLUMNS[7]],
-                client[WIRELESS_CLIENT_COLUMNS[8]],
+                client[IpFabric.WIRELESS_CLIENT_COLUMNS[0]],
+                client[IpFabric.WIRELESS_CLIENT_COLUMNS[1]],
+                client[IpFabric.WIRELESS_CLIENT_COLUMNS[2]],
+                client[IpFabric.WIRELESS_CLIENT_COLUMNS[3]],
+                client[IpFabric.WIRELESS_CLIENT_COLUMNS[4]],
+                client[IpFabric.WIRELESS_CLIENT_COLUMNS[5]],
+                client[IpFabric.WIRELESS_CLIENT_COLUMNS[6]],
+                client[IpFabric.WIRELESS_CLIENT_COLUMNS[7]],
+                client[IpFabric.WIRELESS_CLIENT_COLUMNS[8]],
             )
             for client in clients
         ],
@@ -879,12 +860,12 @@ def find_host(dispatcher, filter_key=None, filter_value=None):
         dispatcher.send_error(f"You've entered an invalid {filter_key.upper()}")
         return CommandStatusChoices.STATUS_FAILED
 
-    filter_api = {filter_key: [EQ, filter_value]}
+    filter_api = {filter_key: [IpFabric.EQ, filter_value]}
     inventory_hosts = ipfabric_api.client.fetch(
-        ADDRESSING_HOSTS_URL,
-        columns=ADDRESSING_HOSTS_COLUMNS,
+        IpFabric.ADDRESSING_HOSTS_URL,
+        columns=IpFabric.ADDRESSING_HOSTS_COLUMNS,
         filters=filter_api,
-        limit=DEFAULT_PAGE_LIMIT,
+        limit=IpFabric.DEFAULT_PAGE_LIMIT,
         snapshot_id=snapshot_id,
     )
     hosts = parse_hosts(inventory_hosts)
@@ -906,16 +887,16 @@ def find_host(dispatcher, filter_key=None, filter_value=None):
         ["Host IP", "VRF", "Host DNS", "Site", "Edges", "Gateways", "Access Points", "Host MAC", "Vendor", "VLAN"],
         [
             (
-                host.get("ip") or "(empty)",
-                host.get("vrf") or "(empty)",
-                host.get("dnsName") or "(empty)",
-                host.get("siteName") or "(empty)",
-                host.get("edges") or "(empty)",
-                host.get("gateways") or "(empty)",
-                host.get("accessPoints") or "(empty)",
-                host.get("mac") or "(empty)",
-                host.get("vendor") or "(empty)",
-                host.get("vlan") or "(empty)",
+                host.get(IpFabric.ADDRESSING_HOSTS_COLUMNS[0]) or EMPTY,
+                host.get(IpFabric.ADDRESSING_HOSTS_COLUMNS[1]) or EMPTY,
+                host.get(IpFabric.ADDRESSING_HOSTS_COLUMNS[2]) or EMPTY,
+                host.get(IpFabric.ADDRESSING_HOSTS_COLUMNS[3]) or EMPTY,
+                host.get(IpFabric.ADDRESSING_HOSTS_COLUMNS[4]) or EMPTY,
+                host.get(IpFabric.ADDRESSING_HOSTS_COLUMNS[5]) or EMPTY,
+                host.get(IpFabric.ADDRESSING_HOSTS_COLUMNS[6]) or EMPTY,
+                host.get(IpFabric.ADDRESSING_HOSTS_COLUMNS[7]) or EMPTY,
+                host.get(IpFabric.ADDRESSING_HOSTS_COLUMNS[8]) or EMPTY,
+                host.get(IpFabric.ADDRESSING_HOSTS_COLUMNS[9]) or EMPTY,
             )
             for host in hosts
         ],

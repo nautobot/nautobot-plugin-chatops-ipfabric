@@ -5,87 +5,6 @@ import logging
 from ipfabric_diagrams import IPFDiagram
 from ipfabric import IPFClient
 
-# Default IP Fabric API pagination limit
-DEFAULT_PAGE_LIMIT = 100
-LAST = "$last"
-PREV = "$prev"
-LAST_LOCKED = "$lastLocked"
-
-# URLs
-INVENTORY_DEVICES_URL = "tables/inventory/devices"
-INTERFACE_LOAD_URL = "tables/interfaces/load"
-INTERFACE_ERRORS_URL = "tables/interfaces/errors/bidirectional"
-INTERFACE_DROPS_URL = "tables/interfaces/drops/bidirectional"
-BGP_NEIGHBORS_URL = "tables/routing/protocols/bgp/neighbors"
-WIRELESS_SSID_URL = "tables/wireless/radio"
-WIRELESS_CLIENT_URL = "tables/wireless/clients"
-ADDRESSING_HOSTS_URL = "tables/addressing/hosts"
-
-# COLUMNS
-INVENTORY_COLUMNS = [
-    "hostname",
-    "siteName",
-    "vendor",
-    "platform",
-    "model",
-    "memoryUtilization",
-    "version",
-    "sn",
-    "loginIp",
-]
-DEVICE_INFO_COLUMNS = ["hostname", "siteName", "vendor", "platform", "model"]
-INTERFACE_LOAD_COLUMNS = ["intName", "inBytes", "outBytes"]
-INTERFACE_ERRORS_COLUMNS = ["intName", "errPktsPct", "errRate"]
-INTERFACE_DROPS_COLUMNS = ["intName", "dropsPktsPct", "dropsRate"]
-BGP_NEIGHBORS_COLUMNS = [
-    "hostname",
-    "localAs",
-    "srcInt",
-    "localAddress",
-    "vrf",
-    "neiHostname",
-    "neiAddress",
-    "neiAs",
-    "state",
-    "totalReceivedPrefixes",
-]
-WIRELESS_SSID_COLUMNS = [
-    "wlanSsid",
-    "siteName",
-    "apName",
-    "radioDscr",
-    "radioStatus",
-    "clientCount",
-]
-WIRELESS_CLIENT_COLUMNS = [
-    "controller",
-    "siteName",
-    "apName",
-    "client",
-    "clientIp",
-    "ssid",
-    "rssi",
-    "signalToNoiseRatio",
-    "state",
-]
-ADDRESSING_HOSTS_COLUMNS = [
-    "ip",
-    "vrf",
-    "dnsName",
-    "siteName",
-    "edges",
-    "gateways",
-    "accessPoints",
-    "mac",
-    "vendor",
-    "vlan",
-]
-
-# Filters
-EQ = "ieq"
-
-# Sort
-INTERFACE_SORT = {"order": "desc", "column": "intName"}
 
 logger = logging.getLogger("rq.worker")
 
@@ -93,6 +12,89 @@ logger = logging.getLogger("rq.worker")
 # pylint: disable=R0904, disable=R0903
 class IpFabric:
     """IpFabric will provide a wrapper for python-ipfabric clients that contain all the necessary API methods."""
+
+    # Default IP Fabric API pagination limit
+    DEFAULT_PAGE_LIMIT = 100
+    LAST = "$last"
+    PREV = "$prev"
+    LAST_LOCKED = "$lastLocked"
+
+    # URLs
+    INVENTORY_DEVICES_URL = "tables/inventory/devices"
+    INTERFACE_LOAD_URL = "tables/interfaces/load"
+    INTERFACE_ERRORS_URL = "tables/interfaces/errors/bidirectional"
+    INTERFACE_DROPS_URL = "tables/interfaces/drops/bidirectional"
+    BGP_NEIGHBORS_URL = "tables/routing/protocols/bgp/neighbors"
+    WIRELESS_SSID_URL = "tables/wireless/radio"
+    WIRELESS_CLIENT_URL = "tables/wireless/clients"
+    ADDRESSING_HOSTS_URL = "tables/addressing/hosts"
+
+    # COLUMNS
+    INVENTORY_COLUMNS = [
+        "hostname",
+        "siteName",
+        "vendor",
+        "platform",
+        "model",
+        "memoryUtilization",
+        "version",
+        "sn",
+        "loginIp",
+    ]
+    DEVICE_INFO_COLUMNS = ["hostname", "siteName", "vendor", "platform", "model"]
+    INTERFACE_LOAD_COLUMNS = ["intName", "inBytes", "outBytes"]
+    INTERFACE_ERRORS_COLUMNS = ["intName", "errPktsPct", "errRate"]
+    INTERFACE_DROPS_COLUMNS = ["intName", "dropsPktsPct", "dropsRate"]
+    BGP_NEIGHBORS_COLUMNS = [
+        "hostname",
+        "localAs",
+        "srcInt",
+        "localAddress",
+        "vrf",
+        "neiHostname",
+        "neiAddress",
+        "neiAs",
+        "state",
+        "totalReceivedPrefixes",
+    ]
+    WIRELESS_SSID_COLUMNS = [
+        "wlanSsid",
+        "siteName",
+        "apName",
+        "radioDscr",
+        "radioStatus",
+        "clientCount",
+    ]
+    WIRELESS_CLIENT_COLUMNS = [
+        "controller",
+        "siteName",
+        "apName",
+        "client",
+        "clientIp",
+        "ssid",
+        "rssi",
+        "signalToNoiseRatio",
+        "state",
+    ]
+    ADDRESSING_HOSTS_COLUMNS = [
+        "ip",
+        "vrf",
+        "dnsName",
+        "siteName",
+        "edges",
+        "gateways",
+        "accessPoints",
+        "mac",
+        "vendor",
+        "vlan",
+    ]
+
+    # Filters
+    IEQ = "ieq"
+    EQ = "eq"
+
+    # Sort
+    INTERFACE_SORT = {"order": "desc", "column": "intName"}
 
     def __init__(self, base_url, token, verify=False, timeout=10):
         """Initialise the IP Fabric wrapper object to provide access to the client and diagram API from the python-ipfabric library.
@@ -126,7 +128,7 @@ class IpFabric:
             if snapshot.state != "loaded":
                 continue
             description = "🔒 " if snapshot.locked else ""
-            if snapshot_ref in [LAST, PREV, LAST_LOCKED]:
+            if snapshot_ref in [self.LAST, self.PREV, self.LAST_LOCKED]:
                 description += f"{snapshot_ref}: "
             if snapshot.name:
                 description += snapshot.name + " - " + snapshot.end.strftime("%d-%b-%y %H:%M:%S")
