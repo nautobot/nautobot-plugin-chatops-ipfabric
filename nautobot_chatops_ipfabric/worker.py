@@ -134,6 +134,7 @@ def get_user_snapshot(dispatcher):
 @subcommand_of("ipfabric")
 def set_snapshot(dispatcher, snapshot=None):
     """Set snapshot as reference for commands."""
+    ipfabric_api.client.update()
     if not snapshot:
         prompt_snapshot_id(f"{BASE_CMD} set-snapshot", "What snapshot are you interested in?", dispatcher)
         return False
