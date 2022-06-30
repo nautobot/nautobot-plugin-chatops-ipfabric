@@ -90,6 +90,7 @@ def prompt_snapshot_id(action_id, help_text, dispatcher, choices=None):
     dispatcher.send_large_table(
         ["Snapshot ID", "Name", "Start", "End", "Device Count", "Licensed Count", "Locked", "Version", "Note"],
         snapshot_table,
+        title="Available IP Fabric Snapshots",  # TODO: nautobot-plugin-chatops Issue 141 send table to user only
     )
 
     return dispatcher.prompt_from_menu(action_id, help_text, choices, default=default)

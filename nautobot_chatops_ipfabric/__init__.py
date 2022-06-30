@@ -14,7 +14,7 @@ class IPFabricConfig(PluginConfig):
     """Plugin configuration for the ipfabric plugin."""
 
     name = "nautobot_chatops_ipfabric"
-    verbose_name = "IPFabric"
+    verbose_name = "Nautobot ChatOps IPFabric"
     version = __version__
     author = "Network to Code, LLC"
     description = "Nautobot Chatops IPFabric"
