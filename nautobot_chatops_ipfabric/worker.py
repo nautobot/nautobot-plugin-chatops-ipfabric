@@ -216,7 +216,7 @@ def get_inventory(dispatcher, filter_key=None, filter_value=None):
                 "Device Inventory",
                 ipfabric_logo(dispatcher),
             ),
-            dispatcher.markdown_block(f"{ipfabric_api.client.base_url}inventory/devices"),
+            dispatcher.markdown_block(f"{ipfabric_api.ui_url}inventory/devices"),
         ]
     )
 
@@ -325,7 +325,7 @@ def get_int_load(dispatcher, device, snapshot_id):
                 "interface load data",
                 ipfabric_logo(dispatcher),
             ),
-            dispatcher.markdown_block(f"{str(ipfabric_api.client.base_url)}technology/interfaces/rate/inbound"),
+            dispatcher.markdown_block(f"{str(ipfabric_api.ui_url)}technology/interfaces/rate/inbound"),
         ]
     )
 
@@ -367,9 +367,7 @@ def get_int_errors(dispatcher, device, snapshot_id):
                 "interface error data",
                 ipfabric_logo(dispatcher),
             ),
-            dispatcher.markdown_block(
-                f"{str(ipfabric_api.client.base_url)}technology/interfaces/error-rates/bidirectional"
-            ),
+            dispatcher.markdown_block(f"{str(ipfabric_api.ui_url)}technology/interfaces/error-rates/bidirectional"),
         ]
     )
 
@@ -411,9 +409,7 @@ def get_int_drops(dispatcher, device, snapshot_id):
                 "interface average drop data",
                 ipfabric_logo(dispatcher),
             ),
-            dispatcher.markdown_block(
-                f"{str(ipfabric_api.client.base_url)}technology/interfaces/drop-rates/bidirectional"
-            ),
+            dispatcher.markdown_block(f"{str(ipfabric_api.ui_url)}technology/interfaces/drop-rates/bidirectional"),
         ]
     )
 
@@ -500,7 +496,7 @@ def pathlookup(
                 "Path Lookup",
                 ipfabric_logo(dispatcher),
             ),
-            dispatcher.markdown_block(f"{ipfabric_api.client.base_url}diagrams/pathlookup"),
+            dispatcher.markdown_block(f"{ipfabric_api.ui_url}diagrams/pathlookup"),
         ]
     )
 
@@ -640,7 +636,7 @@ def get_bgp_neighbors(dispatcher, device=None, snapshot_id=None, state=None):
                 "BGP neighbor data",
                 ipfabric_logo(dispatcher),
             ),
-            dispatcher.markdown_block(f"{ipfabric_api.client.base_url}technology/routing/bgp/neighbors"),
+            dispatcher.markdown_block(f"{ipfabric_api.ui_url}technology/routing/bgp/neighbors"),
         ]
     )
 
@@ -750,7 +746,7 @@ def get_wireless_ssids(dispatcher, ssid=None, snapshot_id=None):
                 "Wireless info for SSIDs",
                 ipfabric_logo(dispatcher),
             ),
-            dispatcher.markdown_block(f"{ipfabric_api.client.base_url}api/v1/tables/wireless/clients"),
+            dispatcher.markdown_block(f"{ipfabric_api.ui_url}api/v1/tables/wireless/clients"),
         ]
     )
     dispatcher.send_large_table(
@@ -830,7 +826,7 @@ def get_wireless_clients(dispatcher, ssid=None, snapshot_id=None):
                 "Wireless Client info by SSID",
                 ipfabric_logo(dispatcher),
             ),
-            dispatcher.markdown_block(f"{ipfabric_api.client.base_url}api/v1/tables/wireless/clients"),
+            dispatcher.markdown_block(f"{ipfabric_api.ui_url}api/v1/tables/wireless/clients"),
         ]
     )
 
@@ -906,7 +902,7 @@ def find_host(dispatcher, filter_key=None, filter_value=None):
                 "Host Inventory",
                 ipfabric_logo(dispatcher),
             ),
-            dispatcher.markdown_block(f"{ipfabric_api.client.base_url}inventory/hosts"),
+            dispatcher.markdown_block(f"{ipfabric_api.ui_url}inventory/hosts"),
         ]
     )
 

@@ -116,6 +116,7 @@ class IpFabric:
             verify=verify,
             timeout=timeout,
         )
+        self.ui_url = str(self.client.base_url).split("api")[0]
 
     def get_formatted_snapshots(self):
         """Get all snapshots and format them for display in chatops choice menu.
