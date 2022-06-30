@@ -84,14 +84,10 @@ def ipfabric(subcommand, **kwargs):
 
 def prompt_snapshot_id(action_id, help_text, dispatcher, choices=None):
     """Prompt the user for snapshot ID."""
-    choices, snapshot_table = ipfabric_api.get_formatted_snapshots()
+    formatted_snapshots = ipfabric_api.get_formatted_snapshots()
+    get_snapshots_table(dispatcher, formatted_snapshots)
+    choices = list(formatted_snapshots.values())
     default = choices[0]
-
-    dispatcher.send_large_table(
-        ["Snapshot ID", "Name", "Start", "End", "Device Count", "Licensed Count", "Locked", "Version", "Note"],
-        snapshot_table,
-        title="Available IP Fabric Snapshots",  # TODO: nautobot-plugin-chatops Issue 141 send table to user only
-    )
 
     return dispatcher.prompt_from_menu(action_id, help_text, choices, default=default)
 
@@ -138,6 +134,27 @@ def get_user_snapshot(dispatcher):
     return snapshot
 
 
+def get_snapshots_table(dispatcher, formatted_snapshots=None):
+    """IP Fabric Loaded Snapshot list."""
+    user = dispatcher.context["user_id"]
+    sub_cmd = "get-loaded-snapshots"
+    snapshot_table = ipfabric_api.get_snapshots_table(formatted_snapshots)
+
+    dispatcher.send_markdown(
+        f"<@{user}>, here are the Loaded Snapshots you requested.\n"
+        f"Shortcut: `/{BASE_CMD} {sub_cmd}`\n"
+        f"{ipfabric_api.ui_url}snapshot-management"
+    )
+
+    dispatcher.send_large_table(
+        ["Snapshot ID", "Name", "Start", "End", "Device Count", "Licensed Count", "Locked", "Version", "Note"],
+        snapshot_table,
+        title="Available IP Fabric Snapshots",
+    )
+
+    return True
+
+
 @subcommand_of("ipfabric")
 def set_snapshot(dispatcher, snapshot: str = None):
     """Set snapshot as reference for commands."""
@@ -176,6 +193,12 @@ def get_snapshot(dispatcher):
         )
 
     return True
+
+
+@subcommand_of("ipfabric")
+def get_loaded_snapshots(dispatcher):
+    """IP Fabric Loaded Snapshot list."""
+    return get_snapshots_table(dispatcher)
 
 
 # DEVICES COMMAND

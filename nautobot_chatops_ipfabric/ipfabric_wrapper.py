@@ -119,10 +119,10 @@ class IpFabric:
         self.ui_url = str(self.client.base_url).split("api", maxsplit=1)[0]
 
     def get_formatted_snapshots(self):
-        """Get all snapshots and format them for display in chatops choice menu.
+        """Get all loaded snapshots and format them for display in chatops choice menu.
 
         Returns:
-            list: Snapshot objects as tuple (description, snapshot_id)
+            dict: Snapshot objects as dict of tuples {snapshot_ref: (description, snapshot_id)}
         """
         formatted_snapshots = {}
         snapshot_refs = []
@@ -140,6 +140,17 @@ class IpFabric:
             formatted_snapshots[snapshot_ref] = (description, snapshot.snapshot_id)
         for ref in snapshot_refs:
             formatted_snapshots.pop(formatted_snapshots[ref][1], None)
+
+        return formatted_snapshots
+
+    def get_snapshots_table(self, formatted_snapshots=None):
+        """Get all snapshots and format them for display in chatops table.
+
+        Returns:
+            list: Snapshot descriptions as list of as tuple [(data, data, ...)]
+        """
+        formatted_snapshots = formatted_snapshots if formatted_snapshots else self.get_formatted_snapshots()
+
         snapshot_table = [
             (
                 snap_id,
@@ -154,4 +165,4 @@ class IpFabric:
             )
             for snap_id in formatted_snapshots
         ]
-        return list(formatted_snapshots.values()), snapshot_table
+        return snapshot_table
