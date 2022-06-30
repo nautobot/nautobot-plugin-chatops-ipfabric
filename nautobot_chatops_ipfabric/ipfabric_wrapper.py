@@ -121,16 +121,20 @@ class IpFabric:
         Returns:
             list: Snapshot objects as tuple (description, snapshot_id)
         """
-        formatted_snapshots = []
+        formatted_snapshots = {}
+        snapshot_refs = []
         for snapshot_ref, snapshot in self.client.snapshots.items():
             if snapshot.state != "loaded":
                 continue
             description = "🔒 " if snapshot.locked else ""
             if snapshot_ref in [LAST, PREV, LAST_LOCKED]:
                 description += f"{snapshot_ref}: "
+                snapshot_refs.append(snapshot_ref)
             if snapshot.name:
                 description += snapshot.name + " - " + snapshot.end.strftime("%d-%b-%y %H:%M:%S")
             else:
                 description += snapshot.end.strftime("%d-%b-%y %H:%M:%S") + " - " + snapshot.snapshot_id
-            formatted_snapshots.append((description, snapshot.snapshot_id))
-        return formatted_snapshots
+            formatted_snapshots[snapshot_ref] = (description, snapshot.snapshot_id)
+        for ref in snapshot_refs:
+            formatted_snapshots.pop(formatted_snapshots[ref][1], None)
+        return list(formatted_snapshots.values())

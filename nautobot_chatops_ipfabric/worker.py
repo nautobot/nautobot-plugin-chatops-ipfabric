@@ -16,6 +16,7 @@ from ipfabric_diagrams import Unicast
 from .ipfabric_wrapper import (
     IpFabric,
     LAST,
+    LAST_LOCKED,
     DEFAULT_PAGE_LIMIT,
     INVENTORY_DEVICES_URL,
     INTERFACE_LOAD_URL,
@@ -132,20 +133,21 @@ def get_user_snapshot(dispatcher):
 
 
 @subcommand_of("ipfabric")
-def set_snapshot(dispatcher, snapshot=None):
+def set_snapshot(dispatcher, snapshot: str = None):
     """Set snapshot as reference for commands."""
     ipfabric_api.client.update()
     if not snapshot:
         prompt_snapshot_id(f"{BASE_CMD} set-snapshot", "What snapshot are you interested in?", dispatcher)
         return False
 
+    snapshot = snapshot.lower()
+    snapshot = LAST_LOCKED if snapshot == "$lastlocked" else snapshot
     user = dispatcher.context["user_id"]
-    snapshots = ipfabric_api.client.get_snapshots()
 
-    if snapshot not in snapshots:
+    if snapshot not in ipfabric_api.client.snapshots:
         dispatcher.send_markdown(f"<@{user}>, snapshot *{snapshot}* does not exist in IP Fabric.")
         return False
-    snapshot_id = snapshots[snapshot].snapshot_id
+    snapshot_id = ipfabric_api.client.snapshots[snapshot].snapshot_id
     set_context(user, {"snapshot": snapshot_id})
 
     dispatcher.send_markdown(
