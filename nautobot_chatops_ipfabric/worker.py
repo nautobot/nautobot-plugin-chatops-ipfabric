@@ -111,7 +111,6 @@ def get_user_snapshot(dispatcher):
 
 def get_snapshots_table(dispatcher, formatted_snapshots=None):
     """IP Fabric Loaded Snapshot list."""
-    user = dispatcher.context["user_id"]
     sub_cmd = "get-loaded-snapshots"
     snapshot_table = ipfabric_api.get_snapshots_table(formatted_snapshots)
 
