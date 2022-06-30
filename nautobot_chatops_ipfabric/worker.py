@@ -84,8 +84,13 @@ def ipfabric(subcommand, **kwargs):
 
 def prompt_snapshot_id(action_id, help_text, dispatcher, choices=None):
     """Prompt the user for snapshot ID."""
-    choices = ipfabric_api.get_formatted_snapshots()
+    choices, snapshot_table = ipfabric_api.get_formatted_snapshots()
     default = choices[0]
+
+    dispatcher.send_large_table(
+        ["Snapshot ID", "Name", "Start", "End", "Device Count", "Licensed Count", "Locked", "Version", "Note"],
+        snapshot_table,
+    )
 
     return dispatcher.prompt_from_menu(action_id, help_text, choices, default=default)
 

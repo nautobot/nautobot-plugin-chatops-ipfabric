@@ -5,6 +5,8 @@ import logging
 from ipfabric_diagrams import IPFDiagram
 from ipfabric import IPFClient
 
+EMPTY = "(empty)"
+
 # Default IP Fabric API pagination limit
 DEFAULT_PAGE_LIMIT = 100
 LAST = "$last"
@@ -137,4 +139,18 @@ class IpFabric:
             formatted_snapshots[snapshot_ref] = (description, snapshot.snapshot_id)
         for ref in snapshot_refs:
             formatted_snapshots.pop(formatted_snapshots[ref][1], None)
-        return list(formatted_snapshots.values())
+        snapshot_table = [
+            (
+                snap_id,
+                self.client.snapshots[snap_id].name or EMPTY,
+                self.client.snapshots[snap_id].start.strftime("%d-%b-%y %H:%M:%S"),
+                self.client.snapshots[snap_id].end.strftime("%d-%b-%y %H:%M:%S"),
+                self.client.snapshots[snap_id].count,
+                self.client.snapshots[snap_id].licensed_count,
+                str(self.client.snapshots[snap_id].locked),
+                self.client.snapshots[snap_id].version or EMPTY,
+                getattr(self.client.snapshots[snap_id], "note", None) or EMPTY,  # TODO: Note being added to ipf v5.0
+            )
+            for snap_id in formatted_snapshots.keys()
+        ]
+        return list(formatted_snapshots.values()), snapshot_table
