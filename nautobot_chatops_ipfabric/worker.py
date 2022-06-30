@@ -61,11 +61,10 @@ def ipfabric(subcommand, **kwargs):
 def prompt_snapshot_id(action_id, help_text, dispatcher, choices=None):
     """Prompt the user for snapshot ID."""
     formatted_snapshots = ipfabric_api.get_formatted_snapshots()
-    get_snapshots_table(dispatcher, formatted_snapshots)
     choices = list(formatted_snapshots.values())
     default = choices[0]
-
-    return dispatcher.prompt_from_menu(action_id, help_text, choices, default=default)
+    dispatcher.prompt_from_menu(action_id, help_text, choices, default=default)
+    return False
 
 
 def prompt_inventory_filter_values(action_id, help_text, dispatcher, filter_key, choices=None):
@@ -116,10 +115,17 @@ def get_snapshots_table(dispatcher, formatted_snapshots=None):
     sub_cmd = "get-loaded-snapshots"
     snapshot_table = ipfabric_api.get_snapshots_table(formatted_snapshots)
 
-    dispatcher.send_markdown(
-        f"<@{user}>, here are the Loaded Snapshots you requested.\n"
-        f"Shortcut: `/{BASE_CMD} {sub_cmd}`\n"
-        f"{ipfabric_api.ui_url}snapshot-management"
+    dispatcher.send_blocks(
+        [
+            *dispatcher.command_response_header(
+                f"{BASE_CMD}",
+                f"{sub_cmd}",
+                [("Loaded Snapshots", " ")],
+                "loaded snapshots",
+                ipfabric_logo(dispatcher),
+            ),
+            dispatcher.markdown_block(f"{ipfabric_api.ui_url}snapshot-management"),
+        ]
     )
 
     dispatcher.send_large_table(
@@ -140,7 +146,7 @@ def set_snapshot(dispatcher, snapshot: str = None):
         return False
 
     snapshot = snapshot.lower()
-    snapshot = LAST_LOCKED if snapshot == "$lastlocked" else snapshot
+    snapshot = IpFabric.LAST_LOCKED if snapshot == "$lastlocked" else snapshot
     user = dispatcher.context["user_id"]
 
     if snapshot not in ipfabric_api.client.snapshots:
