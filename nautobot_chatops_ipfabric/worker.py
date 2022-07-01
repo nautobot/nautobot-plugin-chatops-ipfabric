@@ -228,19 +228,10 @@ def get_inventory(dispatcher, filter_key=None, filter_value=None):
     dispatcher.send_large_table(
         ["Hostname", "Site", "Vendor", "Platform", "Model", "Memory Utilization", "S/W Version", "Serial", "Mgmt IP"],
         [
-            (
-                device.get(IpFabric.INVENTORY_COLUMNS[0]) or IpFabric.EMPTY,
-                device.get(IpFabric.INVENTORY_COLUMNS[1]) or IpFabric.EMPTY,
-                device.get(IpFabric.INVENTORY_COLUMNS[2]) or IpFabric.EMPTY,
-                device.get(IpFabric.INVENTORY_COLUMNS[3]) or IpFabric.EMPTY,
-                device.get(IpFabric.INVENTORY_COLUMNS[4]) or IpFabric.EMPTY,
-                device.get(IpFabric.INVENTORY_COLUMNS[5]) or IpFabric.EMPTY,
-                device.get(IpFabric.INVENTORY_COLUMNS[6]) or IpFabric.EMPTY,
-                device.get(IpFabric.INVENTORY_COLUMNS[7]) or IpFabric.EMPTY,
-                device.get(IpFabric.INVENTORY_COLUMNS[8]) or IpFabric.EMPTY,
-            )
+            [device.get(IpFabric.INVENTORY_COLUMNS[i], IpFabric.EMPTY) for i in range(len(IpFabric.INVENTORY_COLUMNS))]
             for device in devices
         ],
+        title="Device Inventory",
     )
     return True
 
@@ -336,13 +327,13 @@ def get_int_load(dispatcher, device, snapshot_id):
     dispatcher.send_large_table(
         ["IntName", "IN bps", "OUT bps"],
         [
-            (
-                interface[IpFabric.INTERFACE_LOAD_COLUMNS[0]],
-                interface[IpFabric.INTERFACE_LOAD_COLUMNS[1]],
-                interface[IpFabric.INTERFACE_LOAD_COLUMNS[2]],
-            )
+            [
+                interface.get(IpFabric.INTERFACE_LOAD_COLUMNS[i], IpFabric.EMPTY)
+                for i in range(len(IpFabric.INTERFACE_LOAD_COLUMNS))
+            ]
             for interface in int_load
         ],
+        title="Interface Load",
     )
 
     return True
@@ -378,13 +369,13 @@ def get_int_errors(dispatcher, device, snapshot_id):
     dispatcher.send_large_table(
         ["IntName", "Error %", "Error Rate"],
         [
-            (
-                interface[IpFabric.INTERFACE_ERRORS_COLUMNS[0]],
-                interface[IpFabric.INTERFACE_ERRORS_COLUMNS[1]],
-                interface[IpFabric.INTERFACE_ERRORS_COLUMNS[2]],
-            )
+            [
+                interface.get(IpFabric.INTERFACE_ERRORS_COLUMNS[i], IpFabric.EMPTY)
+                for i in range(len(IpFabric.INTERFACE_ERRORS_COLUMNS))
+            ]
             for interface in int_errors
         ],
+        title="Interface Errors",
     )
 
     return True
@@ -420,13 +411,13 @@ def get_int_drops(dispatcher, device, snapshot_id):
     dispatcher.send_large_table(
         ["IntName", "% Drops", "Drop Rate"],
         [
-            (
-                interface[IpFabric.INTERFACE_DROPS_COLUMNS[0]],
-                interface[IpFabric.INTERFACE_DROPS_COLUMNS[1]],
-                interface[IpFabric.INTERFACE_DROPS_COLUMNS[2]],
-            )
+            [
+                interface.get(IpFabric.INTERFACE_DROPS_COLUMNS[i], IpFabric.EMPTY)
+                for i in range(len(IpFabric.INTERFACE_DROPS_COLUMNS))
+            ]
             for interface in int_drops
         ],
+        title="Interface Drops",
     )
 
     return True
@@ -659,20 +650,13 @@ def get_bgp_neighbors(dispatcher, device=None, snapshot_id=None, state=None):
             "total Received Prefixes",
         ],
         [
-            (
-                neighbor[IpFabric.BGP_NEIGHBORS_COLUMNS[0]],
-                neighbor[IpFabric.BGP_NEIGHBORS_COLUMNS[1]],
-                neighbor[IpFabric.BGP_NEIGHBORS_COLUMNS[2]],
-                neighbor[IpFabric.BGP_NEIGHBORS_COLUMNS[3]],
-                neighbor[IpFabric.BGP_NEIGHBORS_COLUMNS[4]],
-                neighbor[IpFabric.BGP_NEIGHBORS_COLUMNS[5]],
-                neighbor[IpFabric.BGP_NEIGHBORS_COLUMNS[6]],
-                neighbor[IpFabric.BGP_NEIGHBORS_COLUMNS[7]],
-                neighbor[IpFabric.BGP_NEIGHBORS_COLUMNS[8]],
-                neighbor[IpFabric.BGP_NEIGHBORS_COLUMNS[9]],
-            )
+            [
+                neighbor.get(IpFabric.BGP_NEIGHBORS_COLUMNS[i], IpFabric.EMPTY)
+                for i in range(len(IpFabric.BGP_NEIGHBORS_COLUMNS))
+            ]
             for neighbor in bgp_neighbors
         ],
+        title=f"BGP Neighbors State: {state}",
     )
 
     return CommandStatusChoices.STATUS_SUCCEEDED
@@ -766,16 +750,13 @@ def get_wireless_ssids(dispatcher, ssid=None, snapshot_id=None):
             "Client Count",
         ],
         [
-            (
-                ssid[IpFabric.WIRELESS_SSID_COLUMNS[0]],
-                ssid[IpFabric.WIRELESS_SSID_COLUMNS[1]],
-                ssid[IpFabric.WIRELESS_SSID_COLUMNS[2]],
-                ssid[IpFabric.WIRELESS_SSID_COLUMNS[3]],
-                ssid[IpFabric.WIRELESS_SSID_COLUMNS[4]],
-                ssid[IpFabric.WIRELESS_SSID_COLUMNS[5]],
-            )
+            [
+                ssid.get(IpFabric.WIRELESS_SSID_COLUMNS[i], IpFabric.EMPTY)
+                for i in range(len(IpFabric.WIRELESS_SSID_COLUMNS))
+            ]
             for ssid in ssids
         ],
+        title="Wireless SSIDs",
     )
     return CommandStatusChoices.STATUS_SUCCEEDED
 
@@ -851,19 +832,13 @@ def get_wireless_clients(dispatcher, ssid=None, snapshot_id=None):
             "State",
         ],
         [
-            (
-                client[IpFabric.WIRELESS_CLIENT_COLUMNS[0]],
-                client[IpFabric.WIRELESS_CLIENT_COLUMNS[1]],
-                client[IpFabric.WIRELESS_CLIENT_COLUMNS[2]],
-                client[IpFabric.WIRELESS_CLIENT_COLUMNS[3]],
-                client[IpFabric.WIRELESS_CLIENT_COLUMNS[4]],
-                client[IpFabric.WIRELESS_CLIENT_COLUMNS[5]],
-                client[IpFabric.WIRELESS_CLIENT_COLUMNS[6]],
-                client[IpFabric.WIRELESS_CLIENT_COLUMNS[7]],
-                client[IpFabric.WIRELESS_CLIENT_COLUMNS[8]],
-            )
+            [
+                client.get(IpFabric.WIRELESS_CLIENT_COLUMNS[i], IpFabric.EMPTY)
+                for i in range(len(IpFabric.WIRELESS_CLIENT_COLUMNS))
+            ]
             for client in clients
         ],
+        title="Wireless Clients",
     )
     return CommandStatusChoices.STATUS_SUCCEEDED
 
@@ -917,19 +892,12 @@ def find_host(dispatcher, filter_key=None, filter_value=None):
     dispatcher.send_large_table(
         ["Host IP", "VRF", "Host DNS", "Site", "Edges", "Gateways", "Access Points", "Host MAC", "Vendor", "VLAN"],
         [
-            (
-                host.get(IpFabric.ADDRESSING_HOSTS_COLUMNS[0]) or IpFabric.EMPTY,
-                host.get(IpFabric.ADDRESSING_HOSTS_COLUMNS[1]) or IpFabric.EMPTY,
-                host.get(IpFabric.ADDRESSING_HOSTS_COLUMNS[2]) or IpFabric.EMPTY,
-                host.get(IpFabric.ADDRESSING_HOSTS_COLUMNS[3]) or IpFabric.EMPTY,
-                host.get(IpFabric.ADDRESSING_HOSTS_COLUMNS[4]) or IpFabric.EMPTY,
-                host.get(IpFabric.ADDRESSING_HOSTS_COLUMNS[5]) or IpFabric.EMPTY,
-                host.get(IpFabric.ADDRESSING_HOSTS_COLUMNS[6]) or IpFabric.EMPTY,
-                host.get(IpFabric.ADDRESSING_HOSTS_COLUMNS[7]) or IpFabric.EMPTY,
-                host.get(IpFabric.ADDRESSING_HOSTS_COLUMNS[8]) or IpFabric.EMPTY,
-                host.get(IpFabric.ADDRESSING_HOSTS_COLUMNS[9]) or IpFabric.EMPTY,
-            )
+            [
+                host.get(IpFabric.ADDRESSING_HOSTS_COLUMNS[i], IpFabric.EMPTY)
+                for i in range(len(IpFabric.ADDRESSING_HOSTS_COLUMNS))
+            ]
             for host in hosts
         ],
+        title=f"Inventory Host with {filter_key.upper()} {filter_value}",
     )
     return True
