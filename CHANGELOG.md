@@ -1,3 +1,15 @@
+## v1.2.0 - 2022-07-07
+
+## Added
+
+- #100 - Migration to use `python-ipfabric` library as the API client to IP Fabric.
+- #103 - New command `get-loaded-snapshots` for greater snapshot details.
+
+## Changed
+
+- Removed the deprecated `end-to-end-path` command.
+
+
 ## v1.1.4 - 2022-06-08
 
 ## Added
