@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "nautobot-chatops-ipfabric"
-version = "1.1.4"
+version = "1.2.1"
 description = "Nautobot Plugin Chatops IPFabric"
 authors = ["Network to Code, LLC <info@networktocode.com>"]
 
@@ -27,8 +27,8 @@ packages = [
 python = "^3.7.1"
 nautobot-chatops = "^1.1.0"
 netutils = "^1.0.0"
-ipfabric-diagrams = "^1.2.7"
-ipfabric = "^0"
+ipfabric-diagrams = "5.*"
+ipfabric = "5.*"
 
 [tool.poetry.dev-dependencies]
 invoke = "*"

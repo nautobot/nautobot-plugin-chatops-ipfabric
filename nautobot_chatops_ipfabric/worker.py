@@ -3,7 +3,6 @@ import logging
 import tempfile
 import os
 from datetime import datetime
-from operator import ge
 
 from django.conf import settings
 from django_rq import job
@@ -12,6 +11,8 @@ from nautobot_chatops.workers import subcommand_of, handle_subcommands
 from netutils.ip import is_ip
 from netutils.mac import is_valid_mac
 from ipfabric_diagrams import Unicast
+from pkg_resources import parse_version
+from ipfabric_diagrams import icmp
 
 from .ipfabric_wrapper import IpFabric
 
@@ -61,6 +62,7 @@ def ipfabric(subcommand, **kwargs):
 def prompt_snapshot_id(action_id, help_text, dispatcher, choices=None):
     """Prompt the user for snapshot ID."""
     formatted_snapshots = ipfabric_api.get_formatted_snapshots()
+    get_snapshots_table(dispatcher, formatted_snapshots)
     choices = list(formatted_snapshots.values())
     default = choices[0]
     dispatcher.prompt_from_menu(action_id, help_text, choices, default=default)
@@ -112,6 +114,7 @@ def get_user_snapshot(dispatcher):
 def get_snapshots_table(dispatcher, formatted_snapshots=None):
     """IP Fabric Loaded Snapshot list."""
     sub_cmd = "get-loaded-snapshots"
+    ipfabric_api.client.update()
     snapshot_table = ipfabric_api.get_snapshots_table(formatted_snapshots)
 
     dispatcher.send_blocks(
@@ -424,6 +427,56 @@ def get_int_drops(dispatcher, device, snapshot_id):
 
 
 # PATH LOOKUP COMMMAND
+def submit_pathlookup(
+        dispatcher, sub_cmd, src_ip, dst_ip, protocol, src_port=None, dst_port=None, icmp_type=None
+):  # pylint: disable=too-many-arguments, too-many-locals
+    snapshot_id = get_user_snapshot(dispatcher)
+    # diagrams for 4.0 - 4.2 are not supported due to attribute changes in 4.3+
+    try:
+        os_version = ipfabric_api.client.os_version
+        if os_version and os_version >= parse_version('4.3'):
+            if protocol != 'icmp':
+                unicast = Unicast(
+                    startingPoint=src_ip,
+                    destinationPoint=dst_ip,
+                    protocol=protocol,
+                    srcPorts=src_port,
+                    dstPorts=dst_port,
+                )
+            else:
+                unicast = Unicast(
+                    startingPoint=src_ip,
+                    destinationPoint=dst_ip,
+                    protocol=protocol,
+                    icmp=getattr(icmp, icmp_type),
+                )
+            raw_png = ipfabric_api.diagram.diagram_png(unicast, snapshot_id)
+            if not raw_png:
+                raise RuntimeError(
+                    "An error occurred while retrieving the path lookup. Please verify the path using the link above."
+                )
+            with tempfile.TemporaryDirectory() as tempdir:
+                # Note: Microsoft Teams will silently fail if we have ":" in our filename, so the timestamp has to skip them.
+                time_str = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+                img_path = os.path.join(tempdir, f"{sub_cmd}_{time_str}.png")
+                # MS Teams requires permission to upload files.
+                if dispatcher.needs_permission_to_send_image():
+                    dispatcher.ask_permission_to_send_image(
+                        f"{sub_cmd}_{time_str}.png",
+                        f"{BASE_CMD} {sub_cmd} {src_ip} {dst_ip} {src_port} {dst_port} {protocol}",
+                    )
+                    return False
+
+                with open(img_path, "wb") as img_file:
+                    img_file.write(raw_png)
+                dispatcher.send_image(img_path)
+        else:
+            raise RuntimeError(
+                f"Diagrams only supported in IP Fabric version 4.3+ and current version is {str(ipfabric_api.client.os_version)}"
+            )
+    except (RuntimeError, OSError) as error:
+        dispatcher.send_error(error)
+        return CommandStatusChoices.STATUS_FAILED
 
 
 @subcommand_of("ipfabric")
@@ -431,9 +484,8 @@ def pathlookup(
     dispatcher, src_ip, dst_ip, src_port, dst_port, protocol
 ):  # pylint: disable=too-many-arguments, too-many-locals
     """Path simulation diagram lookup between source and target IP address."""
-    snapshot_id = get_user_snapshot(dispatcher)
     sub_cmd = "pathlookup"
-    supported_protocols = ["tcp", "udp", "icmp"]
+    supported_protocols = ["tcp", "udp"]
     protocols = [(protocol.upper(), protocol) for protocol in supported_protocols]
 
     # identical to dialog_list in end-to-end-path; consolidate dialog_list if maintaining both cmds
@@ -495,46 +547,67 @@ def pathlookup(
         ]
     )
 
-    # diagrams for 4.0 - 4.2 are not supported due to attribute changes in 4.3+
-    try:
-        os_version = ipfabric_api.client.os_version
-        if os_version and ge(os_version, "4.3"):
-            unicast = Unicast(
-                startingPoint=src_ip,
-                destinationPoint=dst_ip,
-                protocol=protocol,
-                srcPorts=src_port,
-                dstPorts=dst_port,
-            )
-            raw_png = ipfabric_api.diagram.diagram_png(unicast, snapshot_id)
-            if not raw_png:
-                raise RuntimeError(
-                    "An error occurred while retrieving the path lookup. Please verify the path using the link above."
-                )
-            with tempfile.TemporaryDirectory() as tempdir:
-                # Note: Microsoft Teams will silently fail if we have ":" in our filename, so the timestamp has to skip them.
-                time_str = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-                img_path = os.path.join(tempdir, f"{sub_cmd}_{time_str}.png")
-                # MS Teams requires permission to upload files.
-                if dispatcher.needs_permission_to_send_image():
-                    dispatcher.ask_permission_to_send_image(
-                        f"{sub_cmd}_{time_str}.png",
-                        f"{BASE_CMD} {sub_cmd} {src_ip} {dst_ip} {src_port} {dst_port} {protocol}",
-                    )
-                    return False
-
-                with open(img_path, "wb") as img_file:
-                    img_file.write(raw_png)
-                dispatcher.send_image(img_path)
-        else:
-            raise RuntimeError(
-                "PNG output for this chatbot is only supported on IP Fabric version 4.3 and above. Please try the end-to-end-path command."
-            )
-    except (RuntimeError, OSError) as error:
-        dispatcher.send_error(error)
-        return CommandStatusChoices.STATUS_FAILED
+    submit_pathlookup(dispatcher, sub_cmd, src_ip, dst_ip, protocol, src_port=src_port, dst_port=dst_port)
     return True
 
+
+@subcommand_of("ipfabric")
+def pathlookup_icmp(
+        dispatcher, src_ip, dst_ip, icmp_type
+):  # pylint: disable=too-many-arguments, too-many-locals
+    """Path simulation diagram lookup between source and target IP address."""
+    sub_cmd = "pathlookup-icmp"
+    icmp_type = icmp_type.upper() if isinstance(icmp_type, str) else icmp_type
+
+    # identical to dialog_list in end-to-end-path; consolidate dialog_list if maintaining both cmds
+    dialog_list = [
+        {
+            "type": "text",
+            "label": "Source IP",
+        },
+        {
+            "type": "text",
+            "label": "Destination IP",
+        },
+        {
+            "type": "select",
+            "label": "ICMP Type",
+            "choices": icmp.__all__,
+            "default": icmp.__all__[0],
+        },
+    ]
+
+    if not all([src_ip, dst_ip, icmp_type]):
+        dispatcher.multi_input_dialog(f"{BASE_CMD}", f"{sub_cmd}", "ICMP Path Lookup", dialog_list)
+        return CommandStatusChoices.STATUS_SUCCEEDED
+
+    # verify IP address and protocol is valid
+    if not is_ip(src_ip) or not is_ip(dst_ip):
+        dispatcher.send_error("You've entered an invalid IP address")
+        return CommandStatusChoices.STATUS_FAILED
+    if icmp_type not in icmp.__all__:
+        dispatcher.send_error("You've entered an invalid ICMP Type")
+        return CommandStatusChoices.STATUS_FAILED
+
+    dispatcher.send_blocks(
+        [
+            *dispatcher.command_response_header(
+                f"{BASE_CMD}",
+                f"{sub_cmd}",
+                [
+                    ("src_ip", src_ip),
+                    ("dst_ip", dst_ip),
+                    ("icmp_type", icmp_type),
+                ],
+                "Path Lookup",
+                ipfabric_logo(dispatcher),
+            ),
+            dispatcher.markdown_block(f"{ipfabric_api.ui_url}diagrams/pathlookup"),
+        ]
+    )
+
+    submit_pathlookup(dispatcher, sub_cmd, src_ip, dst_ip, "icmp", icmp_type=icmp_type)
+    return True
 
 # ROUTING COMMAND
 
