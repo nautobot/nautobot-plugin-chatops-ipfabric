@@ -27,8 +27,8 @@ packages = [
 python = "^3.7.1"
 nautobot-chatops = "^1.1.0"
 netutils = "^1.0.0"
-ipfabric-diagrams = "5.*"
-ipfabric = "5.*"
+ipfabric-diagrams = "~5.0"
+ipfabric = "~5.0.4"
 
 [tool.poetry.dev-dependencies]
 invoke = "*"
