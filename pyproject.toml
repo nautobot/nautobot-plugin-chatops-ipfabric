@@ -39,7 +39,7 @@ bandit = "*"
 pylint = "*"
 pylint-django = "*"
 pydocstyle = "*"
-flake8 = "*"
+flake8 = "^3.9.2"
 coverage = "*"
 importlib-metadata = ">=3.5"
 

@@ -10,9 +10,8 @@ from nautobot_chatops.choices import CommandStatusChoices
 from nautobot_chatops.workers import subcommand_of, handle_subcommands
 from netutils.ip import is_ip
 from netutils.mac import is_valid_mac
-from ipfabric_diagrams import Unicast
+from ipfabric_diagrams import Unicast, icmp
 from pkg_resources import parse_version
-from ipfabric_diagrams import icmp
 
 from .ipfabric_wrapper import IpFabric
 
@@ -422,14 +421,15 @@ def get_int_drops(dispatcher, device, snapshot_id):
 
 # PATH LOOKUP COMMMAND
 def submit_pathlookup(
-        dispatcher, sub_cmd, src_ip, dst_ip, protocol, src_port=None, dst_port=None, icmp_type=None
+    dispatcher, sub_cmd, src_ip, dst_ip, protocol, src_port=None, dst_port=None, icmp_type=None
 ):  # pylint: disable=too-many-arguments, too-many-locals
+    """Path simulation diagram lookup between source and target IP address."""
     snapshot_id = get_user_snapshot(dispatcher)
     # diagrams for 4.0 - 4.2 are not supported due to attribute changes in 4.3+
     try:
         os_version = ipfabric_api.client.os_version
-        if os_version and os_version >= parse_version('4.3'):
-            if protocol != 'icmp':
+        if os_version and os_version >= parse_version("4.3"):
+            if protocol != "icmp":
                 unicast = Unicast(
                     startingPoint=src_ip,
                     destinationPoint=dst_ip,
@@ -464,6 +464,7 @@ def submit_pathlookup(
                 with open(img_path, "wb") as img_file:
                     img_file.write(raw_png)
                 dispatcher.send_image(img_path)
+                return CommandStatusChoices.STATUS_SUCCEEDED
         else:
             raise RuntimeError(
                 f"Diagrams only supported in IP Fabric version 4.3+ and current version is {str(ipfabric_api.client.os_version)}"
@@ -546,9 +547,7 @@ def pathlookup(
 
 
 @subcommand_of("ipfabric")
-def pathlookup_icmp(
-        dispatcher, src_ip, dst_ip, icmp_type
-):  # pylint: disable=too-many-arguments, too-many-locals
+def pathlookup_icmp(dispatcher, src_ip, dst_ip, icmp_type):  # pylint: disable=too-many-arguments, too-many-locals
     """Path simulation diagram lookup between source and target IP address."""
     sub_cmd = "pathlookup-icmp"
     icmp_type = icmp_type.upper() if isinstance(icmp_type, str) else icmp_type
@@ -566,8 +565,8 @@ def pathlookup_icmp(
         {
             "type": "select",
             "label": "ICMP Type",
-            "choices": icmp.__all__,
-            "default": icmp.__all__[0],
+            "choices": icmp.__all__,  # pylint: disable=no-member
+            "default": icmp.__all__[0],  # pylint: disable=no-member
         },
     ]
 
@@ -579,7 +578,7 @@ def pathlookup_icmp(
     if not is_ip(src_ip) or not is_ip(dst_ip):
         dispatcher.send_error("You've entered an invalid IP address")
         return CommandStatusChoices.STATUS_FAILED
-    if icmp_type not in icmp.__all__:
+    if icmp_type not in icmp.__all__:  # pylint: disable=no-member
         dispatcher.send_error("You've entered an invalid ICMP Type")
         return CommandStatusChoices.STATUS_FAILED
 
@@ -602,6 +601,7 @@ def pathlookup_icmp(
 
     submit_pathlookup(dispatcher, sub_cmd, src_ip, dst_ip, "icmp", icmp_type=icmp_type)
     return True
+
 
 # ROUTING COMMAND
 
