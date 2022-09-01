@@ -901,3 +901,113 @@ def find_host(dispatcher, filter_key=None, filter_value=None):
         title=f"Inventory Host with {filter_key.upper()} {filter_value}",
     )
     return True
+
+
+@subcommand_of("ipfabric")
+def compare_routing_tables(
+    dispatcher,
+    snapshot_a: str = None,
+    snapshot_b: str = None,
+    device: str = None,
+    vrf: str = None,
+):
+    """Compare the routing table for a device between two snapshots
+
+    Args:
+        dispatcher (_type_): _description_
+    """
+    sub_cmd = "compare-routing-tables"
+    user = dispatcher.context["user_id"]
+
+    # Get first snapshot
+    if not snapshot_a:
+        prompt_snapshot_id(f"{BASE_CMD} {sub_cmd}", "Select first snapshot to compare", dispatcher)
+        return False
+    snapshot_a = snapshot_a.lower()
+    print(f"snapshot_a: {snapshot_a}")
+
+    # Get second snapshot
+    # TODO: make it so you can't select same snapshot as 1st
+    if not snapshot_b:
+        prompt_snapshot_id(f"{BASE_CMD} {sub_cmd} {snapshot_a}", "Select second snapshot to compare", dispatcher)
+        return False
+    snapshot_b = snapshot_b.lower()
+    print(f"snapshot_b: {snapshot_b}")
+
+    if snapshot_a == snapshot_b:
+        dispatcher.send_error(f"You must select different snapshots")
+        return CommandStatusChoices.STATUS_FAILED
+        return
+
+    # Get device
+    # TODO: make sure device list is only devices present in BOTH snapshots
+    # TODO: split this this out into a separate function
+    inventory_data_a = ipfabric_api.client.fetch(
+        IpFabric.INVENTORY_DEVICES_URL,
+        columns=IpFabric.DEVICE_INFO_COLUMNS,
+        limit=IpFabric.DEFAULT_PAGE_LIMIT,
+        snapshot_id=snapshot_a,
+    )
+    devices_a = [
+        (inventory_device["hostname"], inventory_device["hostname"].lower()) for inventory_device in inventory_data_a
+    ]
+    print(f"devices_a: {devices_a}")
+
+    inventory_data_b = ipfabric_api.client.fetch(
+        IpFabric.INVENTORY_DEVICES_URL,
+        columns=IpFabric.DEVICE_INFO_COLUMNS,
+        limit=IpFabric.DEFAULT_PAGE_LIMIT,
+        snapshot_id=snapshot_b,
+    )
+    devices_b = [
+        (inventory_device["hostname"], inventory_device["hostname"].lower()) for inventory_device in inventory_data_b
+    ]
+    print(f"devices_b {devices_b}")
+
+    choices = list(set(devices_a).intersection(devices_b))
+    print(f"choices: {choices}")
+    default = choices[0]
+    if not device:
+        dispatcher.prompt_from_menu(
+            f"{BASE_CMD} {sub_cmd} {snapshot_a} {snapshot_b}",
+            "Select a device - NOTE: only devices that exist in both snapshots are listed",
+            choices,
+            default=default,
+        )
+        return CommandStatusChoices.STATUS_SUCCEEDED
+    print(f"device: {device}")
+
+    # Get list of VRFs and allow to choose from a menu
+    # TODO: make the device vrf choices a union of those found in both snapshots
+    # TODO: test this against demo8.ipfabric.com, right now it only seems to work against NTC IPFabric instance
+    if not vrf:
+        filter_api = {"hostname": [IpFabric.EQ, device]}
+        device_vrf_detail = ipfabric_api.client.fetch(
+            IpFabric.VRF_DETAIL_URL,
+            columns=IpFabric.VRF_DETAIL_COLUMNS,
+            filters=filter_api,
+            limit=IpFabric.DEFAULT_PAGE_LIMIT,
+            snapshot_id=snapshot_a,
+        )
+
+        choices = [(v["vrf"], v["vrf"]) for v in device_vrf_detail]
+        print(f"choices: {choices}")
+        default = choices[0]
+        dispatcher.prompt_from_menu(
+            f"{BASE_CMD} {sub_cmd} {snapshot_a} {snapshot_b} {device}",
+            "Select a VRF",
+            choices,
+            default=default,
+        )
+        return CommandStatusChoices.STATUS_SUCCEEDED
+        print(f"vrf: {vrf}")
+
+    # send mock return table
+    dispatcher.send_large_table(
+        ["Test Heading 1", "Test Heading 2"],
+        [
+            ["data row 1, column 1", "data row 1, column 2"],
+            ["data row 2, column 1", "data row 2, column 2"],
+        ],
+        title="compare_route_table test output",
+    )
