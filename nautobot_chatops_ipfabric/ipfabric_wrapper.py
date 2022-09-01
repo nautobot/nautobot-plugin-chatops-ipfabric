@@ -30,6 +30,8 @@ class IpFabric:
     WIRELESS_SSID_URL = "tables/wireless/radio"
     WIRELESS_CLIENT_URL = "tables/wireless/clients"
     ADDRESSING_HOSTS_URL = "tables/addressing/hosts"
+    ROUTING_TABLE_URL = "tables/networks/routes"
+    VRF_DETAIL_URL = "/tables/vrf/detail"
 
     # COLUMNS
     INVENTORY_COLUMNS = [
@@ -90,6 +92,7 @@ class IpFabric:
         "vendor",
         "vlan",
     ]
+    VRF_DETAIL_COLUMNS = ["id", "sn", "hostname", "siteKey", "siteName", "vrf", "rd", "intCount"]
 
     # Filters
     IEQ = "ieq"
