@@ -27,8 +27,8 @@ packages = [
 python = "^3.7.1"
 nautobot-chatops = "^1.1.0"
 netutils = "^1.0.0"
-ipfabric-diagrams = "^1.2.7"
-ipfabric = "^0"
+ipfabric-diagrams = "~5.0.2"
+ipfabric = "~5.0.4"
 
 [tool.poetry.dev-dependencies]
 invoke = "*"
@@ -39,7 +39,7 @@ bandit = "*"
 pylint = "*"
 pylint-django = "*"
 pydocstyle = "*"
-flake8 = "*"
+flake8 = "^3.9.2"
 coverage = "*"
 importlib-metadata = ">=3.5"
 
