@@ -4,6 +4,7 @@ import tempfile
 import os
 from datetime import datetime
 from operator import ge
+from time import perf_counter
 
 from django.conf import settings
 from django_rq import job
@@ -12,11 +13,25 @@ from nautobot_chatops.workers import subcommand_of, handle_subcommands
 from netutils.ip import is_ip
 from netutils.mac import is_valid_mac
 from ipfabric_diagrams import Unicast
+from jdiff import CheckType, extract_data_from_json
 
 from .ipfabric_wrapper import IpFabric
 
 from .context import get_context, set_context
-from .utils import parse_hosts
+from .utils import (
+    convert_route_list_to_dict_by_vrf,
+    diff_routes_by_vrf,
+    diff_routing_tables,
+    filter_route_list_by_vrf,
+    generate_route_detail_table_for_changes,
+    get_route_table_vrf_set,
+    parse_hosts,
+    ROUTE_JMESPATH,
+)
+
+# REMOVE THIS IMPORT AFTER TESTING
+from nautobot_chatops_ipfabric.tests.fixture_data.compare_routing_tables.test_data import *
+
 
 BASE_CMD = "ipfabric"
 IPFABRIC_LOGO_PATH = "ipfabric/ipfabric_logo.png"
@@ -34,11 +49,13 @@ inventory_field_mapping = {
 inventory_host_fields = ["ip", "mac"]
 inventory_host_func_mapper = {inventory_host_fields[0]: is_ip, inventory_host_fields[1]: is_valid_mac}
 
+
 try:
     ipfabric_api = IpFabric(
         base_url=settings.PLUGINS_CONFIG[CHATOPS_IPFABRIC].get("IPFABRIC_HOST"),
         token=settings.PLUGINS_CONFIG[CHATOPS_IPFABRIC].get("IPFABRIC_API_TOKEN"),
         verify=settings.PLUGINS_CONFIG[CHATOPS_IPFABRIC].get("IPFABRIC_VERIFY"),
+        timeout=15,
     )
 except Exception as exp:  # pylint: disable=W0703
     logger.error("Could not load IP Fabric client. Please verify HTTP access to the IP Fabric instance %s", exp)
@@ -906,8 +923,8 @@ def find_host(dispatcher, filter_key=None, filter_value=None):
 @subcommand_of("ipfabric")
 def compare_routing_tables(
     dispatcher,
-    snapshot_a: str = None,
-    snapshot_b: str = None,
+    reference_snapshot: str = None,
+    comparison_snapshot: str = None,
     device: str = None,
     vrf: str = None,
 ):
@@ -920,62 +937,95 @@ def compare_routing_tables(
     user = dispatcher.context["user_id"]
 
     # Get first snapshot
-    if not snapshot_a:
-        prompt_snapshot_id(f"{BASE_CMD} {sub_cmd}", "Select first snapshot to compare", dispatcher)
+    if not reference_snapshot:
+        prompt_snapshot_id(
+            f"{BASE_CMD} {sub_cmd}",
+            "Select reference snapshot. This should be the 'pre' or 'before' snapshot",
+            dispatcher,
+        )
         return False
-    snapshot_a = snapshot_a.lower()
-    print(f"snapshot_a: {snapshot_a}")
+    reference_snapshot = reference_snapshot.lower()
+    print(f"reference_snapshot: {reference_snapshot}")
 
     # Get second snapshot
     # TODO: make it so you can't select same snapshot as 1st
-    if not snapshot_b:
-        prompt_snapshot_id(f"{BASE_CMD} {sub_cmd} {snapshot_a}", "Select second snapshot to compare", dispatcher)
+    if not comparison_snapshot:
+        prompt_snapshot_id(
+            f"{BASE_CMD} {sub_cmd} {reference_snapshot}",
+            "Select comparison snapshot. This should be the 'post' or 'after' snapshot",
+            dispatcher,
+        )
         return False
-    snapshot_b = snapshot_b.lower()
-    print(f"snapshot_b: {snapshot_b}")
+    comparison_snapshot = comparison_snapshot.lower()
+    print(f"comparison_snapshot: {comparison_snapshot}")
 
-    if snapshot_a == snapshot_b:
-        dispatcher.send_error(f"You must select different snapshots")
+    if reference_snapshot == comparison_snapshot:
+        dispatcher.send_error(f"Reference and comparison must be different snapshots")
         return CommandStatusChoices.STATUS_FAILED
         return
 
     # Get device
     # TODO: make sure device list is only devices present in BOTH snapshots
     # TODO: split this this out into a separate function
-    inventory_data_a = ipfabric_api.client.fetch(
+    reference_inventory_data = ipfabric_api.client.fetch(
         IpFabric.INVENTORY_DEVICES_URL,
         columns=IpFabric.DEVICE_INFO_COLUMNS,
         limit=IpFabric.DEFAULT_PAGE_LIMIT,
-        snapshot_id=snapshot_a,
+        snapshot_id=reference_snapshot,
     )
-    devices_a = [
-        (inventory_device["hostname"], inventory_device["hostname"].lower()) for inventory_device in inventory_data_a
+    reference_devices = [
+        (inventory_device["hostname"], inventory_device["hostname"].lower())
+        for inventory_device in reference_inventory_data
     ]
-    print(f"devices_a: {devices_a}")
+    print(f"reference_devices: {reference_devices}")
 
-    inventory_data_b = ipfabric_api.client.fetch(
+    comparison_inventory_data = ipfabric_api.client.fetch(
         IpFabric.INVENTORY_DEVICES_URL,
         columns=IpFabric.DEVICE_INFO_COLUMNS,
         limit=IpFabric.DEFAULT_PAGE_LIMIT,
-        snapshot_id=snapshot_b,
+        snapshot_id=comparison_snapshot,
     )
-    devices_b = [
-        (inventory_device["hostname"], inventory_device["hostname"].lower()) for inventory_device in inventory_data_b
+    comparison_devices = [
+        (inventory_device["hostname"], inventory_device["hostname"].lower())
+        for inventory_device in comparison_inventory_data
     ]
-    print(f"devices_b {devices_b}")
+    print(f"comparison_devices {comparison_devices}")
 
-    choices = list(set(devices_a).intersection(devices_b))
+    choices = list(set(reference_devices).intersection(comparison_devices))
     print(f"choices: {choices}")
     default = choices[0]
     if not device:
         dispatcher.prompt_from_menu(
-            f"{BASE_CMD} {sub_cmd} {snapshot_a} {snapshot_b}",
+            f"{BASE_CMD} {sub_cmd} {reference_snapshot} {comparison_snapshot}",
             "Select a device - NOTE: only devices that exist in both snapshots are listed",
             choices,
             default=default,
         )
         return CommandStatusChoices.STATUS_SUCCEEDED
     print(f"device: {device}")
+
+    # Get the routing tables, we need to do this before we get the VRFs because there are sometimes VRFs that appear in
+    # The routing table that aren't listed in the VRF detail
+    routing_table_filter_api = {"hostname": [IpFabric.EQ, device]}
+    reference_route_table = ipfabric_api.client.fetch(
+        IpFabric.ROUTING_TABLE_URL,
+        columns=IpFabric.ROUTING_TABLE_COLUMNS,
+        filters=routing_table_filter_api,
+        limit=IpFabric.DEFAULT_PAGE_LIMIT,
+        snapshot_id=reference_snapshot,
+    )
+    print(f"reference_route_table for {device}:{reference_route_table}")
+    print("")
+
+    comparison_route_table = ipfabric_api.client.fetch(
+        IpFabric.ROUTING_TABLE_URL,
+        columns=IpFabric.ROUTING_TABLE_COLUMNS,
+        filters=routing_table_filter_api,
+        limit=IpFabric.DEFAULT_PAGE_LIMIT,
+        snapshot_id=comparison_snapshot,
+    )
+    print(f"comparison_route_table for {device}:{comparison_route_table}")
+    print("")
 
     # Get list of VRFs and allow to choose from a menu
     # TODO: make the device vrf choices a union of those found in both snapshots
@@ -987,20 +1037,91 @@ def compare_routing_tables(
             columns=IpFabric.VRF_DETAIL_COLUMNS,
             filters=filter_api,
             limit=IpFabric.DEFAULT_PAGE_LIMIT,
-            snapshot_id=snapshot_a,
+            snapshot_id=reference_snapshot,
         )
 
-        choices = [(v["vrf"], v["vrf"]) for v in device_vrf_detail]
+        # Get the VRFs from the routing tables and vrf detail and combine in choices drop down
+        vrfs_from_routing_tables = get_route_table_vrf_set(reference_route_table, comparison_route_table)
+        print(f"vrfs_from_routing_tables: {vrfs_from_routing_tables}")
+        vrfs_from_vrf_detail = {v["vrf"] for v in device_vrf_detail}
+        print(f"vrfs_from_vrf_detail: {vrfs_from_vrf_detail}")
+        vrfs_all = vrfs_from_vrf_detail.union(vrfs_from_routing_tables)
+        print(f"vrfs_all: {vrfs_all}")
+        # The Slack API can't handle empty strings in choices so we have to change this to "<Unnamed VRF>"
+        choices = [("<Unnamed VRF>", "<Unnamed VRF>") if v == "" else (v, v) for v in vrfs_all]
         print(f"choices: {choices}")
         default = choices[0]
         dispatcher.prompt_from_menu(
-            f"{BASE_CMD} {sub_cmd} {snapshot_a} {snapshot_b} {device}",
+            f"{BASE_CMD} {sub_cmd} {reference_snapshot} {comparison_snapshot} {device}",
             "Select a VRF",
             choices,
             default=default,
         )
         return CommandStatusChoices.STATUS_SUCCEEDED
+        if vrf == "<Unnamed VRF>":
+            vrf = ""
         print(f"vrf: {vrf}")
+        print("")
+
+    # Extract and convert to dictionaries
+    reference_route_dict = convert_route_list_to_dict_by_vrf(
+        extract_data_from_json(reference_route_table, ROUTE_JMESPATH)
+    )
+    print(f"reference_route_dict: {reference_route_dict}")
+    print("")
+
+    comparison_route_dict = convert_route_list_to_dict_by_vrf(
+        extract_data_from_json(comparison_route_table, ROUTE_JMESPATH)
+    )
+    print(f"comparison_route_dict: {comparison_route_dict}")
+    print("")
+
+    # calculate the diff
+
+    route_table_jdiff_result = diff_routes_by_vrf(reference_route_dict, comparison_route_dict, vrf)
+    print(f"route_table_jdiff_result = {route_table_jdiff_result}")
+    print("")
+    # diff_routes_by_vrf
+    # filter_route_list_by_vrf
+    # get_route_table_vrf_set
+
+    routes_diff = diff_routing_tables(reference_route_dict, comparison_route_dict, route_table_jdiff_result, vrf)
+    print(f"routes_diff = {routes_diff}")
+
+    # SUMMARY
+    dispatcher.send_large_table(
+        ["New Routes", "Missing Routes", "Changed Routes"],
+        [
+            str(len(routes_diff.get("new_routes"))),
+            str(len(routes_diff.get("missing_routes"))),
+            str(len(routes_diff.get("changed_routes"))),
+        ],
+        title=f"Summary of route changes for {device} between snapshot {comparison_snapshot} and {reference_snapshot} for VRF {vrf}",
+    )
+
+    # NEW ROUTES
+    if routes_diff.get("new_routes"):
+        dispatcher.send_large_table(
+            ["New Routes"],
+            *[[r] for r in routes_diff.get("new_routes")],
+            title=f"Routes for {device} in {comparison_snapshot} but not in {reference_snapshot} for VRF {vrf}",
+        )
+
+    # MISSING ROUTES
+    if routes_diff.get("missing_routes"):
+        dispatcher.send_large_table(
+            ["Missing Routes"],
+            *[[r] for r in routes_diff.get("missing_routes")],
+            title=f"Routes for {device} in {reference_snapshot} but not in {comparison_snapshot} for VRF {vrf}",
+        )
+
+    # CHANGED ROUTES
+    if routes_diff.get("changed_routes"):
+        dispatcher.send_large_table(
+            ["Changed Routes"],
+            *[[r] for r in routes_diff.get("changed_routes")],
+            title=f"CHANGED: Routes in both {reference_snapshot} and {comparison_snapshot} with changes",
+        )
 
     # send mock return table
     dispatcher.send_large_table(
@@ -1011,3 +1132,121 @@ def compare_routing_tables(
         ],
         title="compare_route_table test output",
     )
+
+
+@subcommand_of("ipfabric")
+def send_test_routing_diff(
+    dispatcher,
+):
+    """Test to send synthetic routing diff tables
+
+    Args:
+        dispatcher (_type_): _description_
+    """
+    sub_cmd = "send-test-routing-diff"
+    user = dispatcher.context["user_id"]
+    routes_diff = {
+        "new_routes": ["10.33.0.0/16", "10.32.0.0/16", "0.0.0.0/0"],
+        "missing_routes": ["10.33.22.0/24"],
+        "changed_routes": ["10.33.0.0/24", "10.33.123.0/24"],
+    }
+    device = "some_device"
+    reference_snapshot = "before_snapshot"
+    comparison_snapshot = "after_snapshot"
+    vrf = "some_vrf"
+
+    print(str(len(routes_diff.get("new_routes"))))
+    print(str(len(routes_diff.get("missing_routes"))))
+    print(str(len(routes_diff.get("changed_routes"))))
+
+    # SUMMARY
+    dispatcher.send_large_table(
+        ["New Routes", "Missing Routes", "Changed Routes"],
+        [
+            [
+                str(len(routes_diff.get("new_routes"))),
+                str(len(routes_diff.get("missing_routes"))),
+                str(len(routes_diff.get("changed_routes"))),
+            ]
+        ],
+        title=f"Summary of route changes for {device} between snapshot {comparison_snapshot} and {reference_snapshot} for VRF {vrf}",
+    )
+
+    # NEW ROUTES
+    if routes_diff.get("new_routes"):
+        dispatcher.send_large_table(
+            ["New Routes"],
+            [[r] for r in routes_diff.get("new_routes")],
+            title=f"Routes for {device} in {comparison_snapshot} that are not in {reference_snapshot} for VRF {vrf}",
+        )
+
+    # MISSING ROUTES
+    if routes_diff.get("missing_routes"):
+        dispatcher.send_large_table(
+            ["Missing Routes"],
+            [[r] for r in routes_diff.get("missing_routes")],
+            title=f"Routes for {device} in {reference_snapshot} but not in {comparison_snapshot} for VRF {vrf}",
+        )
+
+    # CHANGED ROUTES
+    if routes_diff.get("changed_routes"):
+        dispatcher.send_large_table(
+            ["Changed Routes"],
+            [[r] for r in routes_diff.get("changed_routes")],
+            title=f"Routes for {device} in both {reference_snapshot} and {comparison_snapshot} with changes for VRF {vrf}",
+        )
+
+    # DETAIL NEW ROUTES
+
+    my_jdiff_result = diff_routes_by_vrf(reference_route_dict, comparison_route_dict, "local")
+    print(f"my_jdiff = {my_jdiff_result}")
+    routes_diff = diff_routing_tables(reference_route_dict, comparison_route_dict, my_jdiff_result, "local")
+    print(routes_diff)
+
+    if routes_diff.get("new_routes"):
+        new_routes_detail_table = generate_route_detail_table_for_changes(
+            reference_route_dict,
+            comparison_route_dict,
+            my_jdiff_result,
+            routes_diff,
+            "local",
+            "new_routes",
+        )
+        print(f"new_routes_detail_table = {new_routes_detail_table}")
+        dispatcher.send_large_table(
+            new_routes_detail_table[0],
+            [r for r in new_routes_detail_table[1:]],
+            title=f"Detail of routes for {device} in {comparison_snapshot} that are not in {reference_snapshot} for VRF {vrf}",
+        )
+
+    if routes_diff.get("missing_routes"):
+        missing_routes_detail_table = generate_route_detail_table_for_changes(
+            reference_route_dict,
+            comparison_route_dict,
+            my_jdiff_result,
+            routes_diff,
+            "local",
+            "missing_routes",
+        )
+        print(f"missing_routes_detail_table = {missing_routes_detail_table}")
+        dispatcher.send_large_table(
+            missing_routes_detail_table[0],
+            [r for r in missing_routes_detail_table[1:]],
+            title=f"Detail of routes for {device} in {reference_snapshot} that are not in {comparison_snapshot} for VRF {vrf}",
+        )
+
+    if routes_diff.get("changed_routes"):
+        changed_routes_detail_table = generate_route_detail_table_for_changes(
+            reference_route_dict,
+            comparison_route_dict,
+            my_jdiff_result,
+            routes_diff,
+            "local",
+            "changed_routes",
+        )
+        print(f"changed_routes_detail_table = {changed_routes_detail_table}")
+        dispatcher.send_large_table(
+            changed_routes_detail_table[0],
+            [r for r in changed_routes_detail_table[1:]],
+            title=f"Detail of routes for {device} in both {reference_snapshot} and {comparison_snapshot} with changes for VRF {vrf}",
+        )
