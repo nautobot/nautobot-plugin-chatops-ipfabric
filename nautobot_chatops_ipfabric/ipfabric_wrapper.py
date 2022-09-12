@@ -92,6 +92,21 @@ class IpFabric:
         "vendor",
         "vlan",
     ]
+    ROUTING_TABLE_COLUMNS = [
+        "id",
+        "sn",
+        "hostname",
+        "siteKey",
+        "siteName",
+        "network",
+        "prefix",
+        "protocol",
+        "vrf",
+        "nhCount",
+        "nhLowestAge",
+        "nhLowestMetric",
+        "nexthop",
+    ]
     VRF_DETAIL_COLUMNS = ["id", "sn", "hostname", "siteKey", "siteName", "vrf", "rd", "intCount"]
 
     # Filters
@@ -110,11 +125,7 @@ class IpFabric:
             verify (bool, optional): Verify identity of requested host when using HTTPS. Defaults to False. Enable with verify='path/to/client.pem'.
             timeout (int, optional): HTTP timeout connection (seconds). Defaults to 10.
         """
-        self.client = IPFClient(
-            base_url=base_url,
-            token=token,
-            verify=verify,
-        )
+        self.client = IPFClient(base_url=base_url, token=token, verify=verify, timeout=timeout)
         self.diagram = IPFDiagram(
             base_url=base_url,
             token=token,
