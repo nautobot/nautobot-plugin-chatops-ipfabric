@@ -10,6 +10,7 @@ import sys
 from distutils.util import strtobool
 from django.core.exceptions import ImproperlyConfigured
 from nautobot.core import settings
+from nautobot.core.settings_funcs import parse_redis_connection
 
 # Enforce required configuration parameters
 for key in [
@@ -122,14 +123,25 @@ if REDIS_SSL:
 #
 # This "default" server is now used by RQ_QUEUES.
 # >> See: nautobot.core.settings.RQ_QUEUES
+# CACHES = {
+#     "default": {
+#         "BACKEND": "django_redis.cache.RedisCache",
+#         "LOCATION": f"{REDIS_SCHEME}://{REDIS_HOST}:{REDIS_PORT}/0",
+#         "TIMEOUT": 300,
+#         "OPTIONS": {
+#             "CLIENT_CLASS": "django_redis.client.DefaultClient",
+#             "PASSWORD": REDIS_PASSWORD,
+#         },
+#     }
+# }
+
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": f"{REDIS_SCHEME}://{REDIS_HOST}:{REDIS_PORT}/0",
+        "LOCATION": parse_redis_connection(redis_database=0),
         "TIMEOUT": 300,
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
-            "PASSWORD": REDIS_PASSWORD,
         },
     }
 }
@@ -287,7 +299,10 @@ NAPALM_ARGS = {}
 PAGINATE_COUNT = int(os.environ.get("PAGINATE_COUNT", 50))
 
 # Enable installed plugins. Add the name of each plugin to the list.
-PLUGINS = ["nautobot_chatops", "nautobot_chatops_ipfabric"]
+PLUGINS = [
+    "nautobot_chatops",
+    "nautobot_chatops_ipfabric",
+]
 
 # Plugins configuration settings. These settings are used by various plugins that the user may have installed.
 # Each key in the dictionary is the name of an installed plugin and its value is a dictionary of settings.
@@ -311,7 +326,7 @@ PLUGINS_CONFIG = {
         "IPFABRIC_API_TOKEN": os.environ.get("IPFABRIC_API_TOKEN"),
         "IPFABRIC_HOST": os.environ.get("IPFABRIC_HOST"),
         "IPFABRIC_VERIFY": is_truthy(os.environ.get("IPFABRIC_VERIFY", True)),
-        "IPFABRIC_TIMEOUT": os.environ.get("IPFABRIC_TIMEOUT", 15),
+        "IPFABRIC_TIMEOUT": os.environ.get("IPFABRIC_TIMEOUT", 30),
     },
 }
 
