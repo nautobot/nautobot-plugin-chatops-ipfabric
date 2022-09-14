@@ -3,6 +3,8 @@
 from nautobot_chatops_ipfabric.ipfabric_wrapper import IpFabric
 from jdiff import CheckType, extract_data_from_json
 
+# This expression will flatten and join the list items under the 'nexthop' key for each route entry from IPFabric's
+# device routing table. This makes the data much easier to compare with jdiff.
 ROUTE_JMESPATH = (
     "[*].{"
     "network: network, "
@@ -39,6 +41,8 @@ ROUTE_TABLE_POST_EXTRACTION_KEYS = [
 
 
 class DeviceRouteTableDiff:
+    """Provides routing table diff functionality between two route tables for a given vrf."""
+
     def __init__(self, reference_route_table=None, comparison_route_table=None, vrf=None) -> None:
         self.reference_route_table = reference_route_table
         self.comparison_route_table = comparison_route_table
@@ -50,7 +54,15 @@ class DeviceRouteTableDiff:
         self.reference_route_dict = None
         self.comparison_route_dict = None
 
-    def _convert_route_table_to_dict_by_vrf(self, route_table) -> dict:
+    def _convert_route_table_to_dict_by_vrf(self, route_table: list) -> dict:
+        """Converts IP Fabric route table lists to a dictionary by vrf and network.
+
+        Args:
+            route_table (list): A device routing table from the IPFabric API.
+
+        Returns:
+            dict: A dictionary of routing table entries with top level keys being the vrfs and second level keys being networks.
+        """
         vrfs_set = {route["vrf"] for route in route_table}
         route_dict_by_vrf = {}
         for vrf in vrfs_set:
@@ -59,6 +71,9 @@ class DeviceRouteTableDiff:
         return route_dict_by_vrf
 
     def convert_route_table_to_dict_by_vrf(self):
+        """Public method to execute the routing table conversion to dictionaries.
+        Includes JMESPATH data extraction provided by jdiff.
+        """
         self.reference_route_dict = self._convert_route_table_to_dict_by_vrf(
             extract_data_from_json(self.reference_route_table, ROUTE_JMESPATH)
         )
@@ -67,12 +82,18 @@ class DeviceRouteTableDiff:
         )
 
     def _jdiff_routes_by_vrf(self):
+        """Performs the diff between the routing tables using jdiff and updates the results object."""
         match = CheckType.create("exact_match")
         self._route_table_jdiff_results = match.evaluate(
             (self.reference_route_dict.get(self.vrf, {})), (self.comparison_route_dict.get(self.vrf, {}))
         )
 
     def _get_routing_diff_summary(self) -> dict:
+        """Parses the jdiff results into a simple dictionary containing new, missing and changed routes.
+
+        Returns:
+            dict: A dictionary with new_routes, missing_routes and changed_routes as keys and lists of network routes as values.
+        """
         if not self._route_table_jdiff_results:
             self._jdiff_routes_by_vrf()
         _jdiff_sets_match = self._route_table_jdiff_results[1]
@@ -89,7 +110,18 @@ class DeviceRouteTableDiff:
     def _generate_route_detail_table_for_changes(
         self,
         table_type: str,
-    ) -> dict:
+    ) -> list:
+        """Generates a list with headers and route entries for new, missing or changed routes to be sent back to user via the chat platform.
+
+        Args:
+            table_type (str): Either new_routes, missing_routes or changed_routes.
+
+        Raises:
+            ValueError: Error is raised if invalid table type is passed.
+
+        Returns:
+            list: A table of routing entries with a header for each column.
+        """
         if not self._route_table_jdiff_results:
             self._jdiff_routes_by_vrf()
         routes_diff_summary = self._get_routing_diff_summary()
@@ -125,19 +157,23 @@ class DeviceRouteTableDiff:
             return route_detail_table
 
     def get_routing_diff_summary(self):
+        """Get method to get the routing diff summary"""
         return self._get_routing_diff_summary()
 
     def get_new_routes_detail_table(self):
+        """Get method to get detailed table for new routes"""
         return self._generate_route_detail_table_for_changes(
             table_type="new_routes",
         )
 
     def get_missing_routes_detail_table(self):
+        """Get method to get detailed table for missing routes"""
         return self._generate_route_detail_table_for_changes(
             table_type="missing_routes",
         )
 
     def get_changed_routes_detail_table(self):
+        """Get method to get detailed table for changed routes"""
         return self._generate_route_detail_table_for_changes(
             table_type="changed_routes",
         )
@@ -169,7 +205,16 @@ def parse_hosts(hosts: dict) -> list:
     return parsed_hosts
 
 
-def get_route_table_vrf_set(route_list_1, route_list_2) -> set:
-    vrfs_set_1 = {route["vrf"] for route in route_list_1}
-    vrfs_set_2 = {route["vrf"] for route in route_list_2}
+def get_route_table_vrf_set(route_table_1: list, route_table_2: list) -> set:
+    """Extracts the union of a set of all vrfs from two routing tables.
+
+    Args:
+        route_table_1 (list): A routing table from IPFabric.
+        route_table_2 (list): Another routing table from IPFabric.
+
+    Returns:
+        set: A set containing all the vrfs found in both routing tables.
+    """
+    vrfs_set_1 = {route["vrf"] for route in route_table_1}
+    vrfs_set_2 = {route["vrf"] for route in route_table_2}
     return vrfs_set_1.union(vrfs_set_2)
