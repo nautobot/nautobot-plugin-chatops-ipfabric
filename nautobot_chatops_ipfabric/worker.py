@@ -47,7 +47,7 @@ try:
         base_url=settings.PLUGINS_CONFIG[CHATOPS_IPFABRIC].get("IPFABRIC_HOST"),
         token=settings.PLUGINS_CONFIG[CHATOPS_IPFABRIC].get("IPFABRIC_API_TOKEN"),
         verify=settings.PLUGINS_CONFIG[CHATOPS_IPFABRIC].get("IPFABRIC_VERIFY"),
-        timeout=15,
+        timeout=int(settings.PLUGINS_CONFIG[CHATOPS_IPFABRIC].get("IPFABRIC_TIMEOUT")),
     )
 except Exception as exp:  # pylint: disable=W0703
     logger.error("Could not load IP Fabric client. Please verify HTTP access to the IP Fabric instance %s", exp)
@@ -920,11 +920,7 @@ def compare_routing_tables(
     device: str = None,
     vrf: str = None,
 ):
-    """Compare the routing table for a device between two snapshots
-
-    Args:
-        dispatcher (_type_): _description_
-    """
+    """Compare the routing table for a vrf on a device between two snapshots"""
     sub_cmd = "compare-routing-tables"
     user = dispatcher.context["user_id"]
 
@@ -1148,11 +1144,7 @@ def compare_routing_tables(
 def test_routing_table_diff(
     dispatcher,
 ):
-    """Test to send synthetic routing diff tables
-
-    Args:
-        dispatcher (_type_): _description_
-    """
+    """Test command to diff two routing tables based on fixture data and send results"""
     # REMOVE THIS IMPORT AFTER TESTING
     from nautobot_chatops_ipfabric.tests.fixture_data.compare_routing_tables.reference_route_table_1 import (
         reference_route_table,
