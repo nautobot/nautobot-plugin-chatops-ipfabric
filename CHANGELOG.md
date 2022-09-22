@@ -7,7 +7,7 @@
 
 ## Changed
 
-- Version 2.0.0 of `nautobot-plugin-chatops-ipfabric` only supports IP Fabric version v5.0
+- Version 2.0.0 of `nautobot-plugin-chatops-ipfabric` only supports IP Fabric version v5.0 and above.
 
 ## v1.2.0 - 2022-07-07
 
