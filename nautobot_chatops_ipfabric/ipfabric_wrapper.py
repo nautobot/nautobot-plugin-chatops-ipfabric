@@ -22,14 +22,6 @@ class IpFabric:
     EMPTY = "(empty)"
 
     # URLs
-    INVENTORY_DEVICES_URL = "tables/inventory/devices"
-    INTERFACE_LOAD_URL = "tables/interfaces/load"
-    INTERFACE_ERRORS_URL = "tables/interfaces/errors/bidirectional"
-    INTERFACE_DROPS_URL = "tables/interfaces/drops/bidirectional"
-    BGP_NEIGHBORS_URL = "tables/routing/protocols/bgp/neighbors"
-    WIRELESS_SSID_URL = "tables/wireless/radio"
-    WIRELESS_CLIENT_URL = "tables/wireless/clients"
-    ADDRESSING_HOSTS_URL = "tables/addressing/hosts"
     ROUTING_TABLE_URL = "tables/networks/routes"
     VRF_DETAIL_URL = "/tables/vrf/detail"
 
@@ -46,7 +38,7 @@ class IpFabric:
         "loginIp",
     ]
     DEVICE_INFO_COLUMNS = ["hostname", "siteName", "vendor", "platform", "model"]
-    INTERFACE_LOAD_COLUMNS = ["intName", "inBytes", "outBytes"]
+    INTERFACE_LOAD_COLUMNS = ["intName", "bytes", "pkts"]
     INTERFACE_ERRORS_COLUMNS = ["intName", "errPktsPct", "errRate"]
     INTERFACE_DROPS_COLUMNS = ["intName", "dropsPktsPct", "dropsRate"]
     BGP_NEIGHBORS_COLUMNS = [

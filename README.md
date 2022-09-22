@@ -4,6 +4,15 @@ An IP Fabric ChatOps plugin for [Nautobot](https://github.com/nautobot/nautobot)
 
 This plugin uses the [Nautobot ChatOps](https://github.com/nautobot/nautobot-plugin-chatops/) base framework. It provides the ability to query data from IP Fabric using a supported chat platform (currently Slack, Webex Teams, MS Teams, and Mattermost).
 
+## Version Matrix
+
+Here is a compatibility matrix and the minimum versions required to run this plugin:
+
+| IP Fabric | Python | Nautobot | chatops | chatops-ipfabric | [python-ipfabric](https://github.com/community-fabric/python-ipfabric) | [python-ipfabric-diagrams](https://github.com/community-fabric/python-ipfabric-diagrams) |
+|-----------|--------|----------|---------|------------------|------------------------------------------------------------------------|------------------------------------------------------------------------------------------|
+| 4.4       | 3.7.1  | 1.1.0    | 1.1.0   | 1.2.0            | 0.11.0                                                                 | 1.2.7                                                                                    |
+| 5.0.1     | 3.7.1  | 1.1.0    | 1.1.0   | 1.3.0            | 5.0.4                                                                  | 5.0.2                                                                                    |
+
 ## Screenshots
 
 ![image](https://user-images.githubusercontent.com/29293048/138304572-46d2fa11-8dd2-4722-9ab0-450e20a657a5.png)

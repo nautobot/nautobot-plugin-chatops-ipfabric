@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "nautobot-chatops-ipfabric"
-version = "1.2.0"
+version = "2.0.0"
 description = "Nautobot Plugin Chatops IPFabric"
 authors = ["Network to Code, LLC <info@networktocode.com>"]
 
@@ -28,7 +28,7 @@ python = "^3.7.1"
 nautobot-chatops = "^1.1.0"
 netutils = "^1.0.0"
 ipfabric-diagrams = "^5"
-ipfabric = "5.0.7"
+ipfabric = "~5.0.4"
 jdiff = "^0.0.1"
 
 [tool.poetry.dev-dependencies]
@@ -40,7 +40,7 @@ bandit = "*"
 pylint = "*"
 pylint-django = "*"
 pydocstyle = "*"
-flake8 = "*"
+flake8 = "^3.9.2"
 coverage = "*"
 importlib-metadata = ">=3.5"
 
