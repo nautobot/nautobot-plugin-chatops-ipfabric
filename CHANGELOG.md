@@ -1,3 +1,14 @@
+## v2.0.0 - 2022-09-22
+
+## Added
+
+- #109 - Migration to use `python-ipfabric` library as the API client to IP Fabric.
+- #103 - New command `get-loaded-snapshots` for greater snapshot details.
+
+## Changed
+
+- Version 2.0.0 of `nautobot-plugin-chatops-ipfabric` only supports IP Fabric version v5.0
+
 ## v1.2.0 - 2022-07-07
 
 ## Added
