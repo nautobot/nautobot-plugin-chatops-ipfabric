@@ -427,7 +427,7 @@ def submit_pathlookup(
     # diagrams for 4.0 - 4.2 are not supported due to attribute changes in 4.3+
     try:
         os_version = ipfabric_api.client.os_version
-        if os_version and os_version >= parse_version("4.3"):
+        if os_version and parse_version(os_version) >= parse_version("4.3"):
             if protocol != "icmp":
                 unicast = Unicast(
                     startingPoint=src_ip,
