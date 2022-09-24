@@ -550,6 +550,7 @@ def pathlookup_icmp(dispatcher, src_ip, dst_ip, icmp_type):  # pylint: disable=t
     """Path simulation diagram lookup between source and target IP address."""
     sub_cmd = "pathlookup-icmp"
     icmp_type = icmp_type.upper() if isinstance(icmp_type, str) else icmp_type
+    icmp_types = [(icmp_type_name.upper(), icmp_type_name) for icmp_type_name in icmp.__all__]
 
     # identical to dialog_list in end-to-end-path; consolidate dialog_list if maintaining both cmds
     dialog_list = [
@@ -564,8 +565,8 @@ def pathlookup_icmp(dispatcher, src_ip, dst_ip, icmp_type):  # pylint: disable=t
         {
             "type": "select",
             "label": "ICMP Type",
-            "choices": icmp.__all__,  # pylint: disable=no-member
-            "default": icmp.__all__[0],  # pylint: disable=no-member
+            "choices": icmp_types,  # pylint: disable=no-member
+            "default": icmp_types[0],  # pylint: disable=no-member
         },
     ]
 
