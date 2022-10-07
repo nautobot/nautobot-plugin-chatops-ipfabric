@@ -15,6 +15,7 @@ class IpFabric:
 
     # Default IP Fabric API pagination limit
     DEFAULT_PAGE_LIMIT = 100
+    LARGE_PAGE_LIMIT = 1000
     LAST = "$last"
     PREV = "$prev"
     LAST_LOCKED = "$lastLocked"
@@ -22,7 +23,7 @@ class IpFabric:
     EMPTY = "(empty)"
 
     # URLs
-    ROUTING_TABLE_URL = "tables/networks/routes"
+    ROUTING_TABLE_URL = "/tables/networks/routes"
     VRF_DETAIL_URL = "/tables/vrf/detail"
 
     # COLUMNS

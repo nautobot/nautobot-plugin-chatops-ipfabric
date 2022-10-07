@@ -68,6 +68,7 @@ def ipfabric(subcommand, **kwargs):
 def prompt_snapshot_id(action_id, help_text, dispatcher, choices=None):
     """Prompt the user for snapshot ID."""
     formatted_snapshots = ipfabric_api.get_formatted_snapshots()
+    print(f"formatted_snapshots: {formatted_snapshots}")
     choices = list(formatted_snapshots.values())
     default = choices[0]
     dispatcher.prompt_from_menu(action_id, help_text, choices, default=default)
@@ -1007,28 +1008,24 @@ def compare_routing_tables(
         return CommandStatusChoices.STATUS_FAILED
         return
 
-    # GET DEVICE
-    reference_inventory_data = ipfabric_api.client.fetch(
-        IpFabric.INVENTORY_DEVICES_URL,
+    # GET DEVICES
+    reference_inventory_data = ipfabric_api.client.inventory.devices.fetch(
         columns=IpFabric.DEVICE_INFO_COLUMNS,
         limit=IpFabric.DEFAULT_PAGE_LIMIT,
         snapshot_id=reference_snapshot,
     )
     reference_devices = [
-        (inventory_device["hostname"], inventory_device["hostname"].lower())
-        for inventory_device in reference_inventory_data
+        (inventory_device["hostname"], inventory_device["hostname"]) for inventory_device in reference_inventory_data
     ]
     print(f"reference_devices: {reference_devices}")
 
-    comparison_inventory_data = ipfabric_api.client.fetch(
-        IpFabric.INVENTORY_DEVICES_URL,
+    comparison_inventory_data = ipfabric_api.client.inventory.devices.fetch(
         columns=IpFabric.DEVICE_INFO_COLUMNS,
         limit=IpFabric.DEFAULT_PAGE_LIMIT,
         snapshot_id=comparison_snapshot,
     )
     comparison_devices = [
-        (inventory_device["hostname"], inventory_device["hostname"].lower())
-        for inventory_device in comparison_inventory_data
+        (inventory_device["hostname"], inventory_device["hostname"]) for inventory_device in comparison_inventory_data
     ]
     print(f"comparison_devices {comparison_devices}")
 
@@ -1058,7 +1055,7 @@ def compare_routing_tables(
         IpFabric.ROUTING_TABLE_URL,
         columns=IpFabric.ROUTING_TABLE_COLUMNS,
         filters=routing_table_filter_api,
-        limit=IpFabric.DEFAULT_PAGE_LIMIT,
+        limit=IpFabric.LARGE_PAGE_LIMIT,
         snapshot_id=reference_snapshot,
     )
     print(f"reference_route_table for {device}:{reference_route_table}")
@@ -1067,7 +1064,7 @@ def compare_routing_tables(
         IpFabric.ROUTING_TABLE_URL,
         columns=IpFabric.ROUTING_TABLE_COLUMNS,
         filters=routing_table_filter_api,
-        limit=IpFabric.DEFAULT_PAGE_LIMIT,
+        limit=IpFabric.LARGE_PAGE_LIMIT,
         snapshot_id=comparison_snapshot,
     )
     print(f"comparison_route_table for {device}:{comparison_route_table}")
@@ -1115,10 +1112,13 @@ def compare_routing_tables(
             default=default,
         )
         return CommandStatusChoices.STATUS_SUCCEEDED
-        if vrf == "<Unnamed VRF>":
-            vrf = ""
-        print(f"vrf: {vrf}")
-        print("")
+
+    # the VRF needs to be changed back to an empty string here to match what's in the route table
+    if vrf == "<Unnamed VRF>":
+        vrf = ""
+    print(" ")
+    print(f"vrf: {vrf}")
+    print(" ")
 
     RouteTableDiffObject = DeviceRouteTableDiff(
         reference_route_table=reference_route_table, comparison_route_table=comparison_route_table, vrf=vrf
@@ -1134,9 +1134,9 @@ def compare_routing_tables(
         ["New Routes", "Missing Routes", "Changed Routes"],
         [
             [
-                str(len(routes_diff_summary.get("new_routes"))),
-                str(len(routes_diff_summary.get("missing_routes"))),
-                str(len(routes_diff_summary.get("changed_routes"))),
+                str(len(routes_diff_summary.get("new_routes", []))),
+                str(len(routes_diff_summary.get("missing_routes", []))),
+                str(len(routes_diff_summary.get("changed_routes", []))),
             ]
         ],
         title=f"Summary of route changes for {device} between snapshot {comparison_snapshot} and {reference_snapshot} for VRF {vrf}",

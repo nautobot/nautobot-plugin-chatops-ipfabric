@@ -23,6 +23,24 @@ ROUTE_JMESPATH = (
     "}"
 )
 
+ALT_ROUTE_JMESPATH = (
+    "[*].{"
+    "network: network, "
+    "prefix: prefix, "
+    "protocol: protocol, "
+    "vrf: vrf, "
+    "nhCount: nhCount, "
+    "nexthop_ad: (nexthop[*].ad), "
+    "nexthop_intName: (nexthop[*].intName), "
+    "nexthop_ip: (nexthop[*].ip), "
+    "nexthop_labels: (nexthop[*].labels), "
+    "nexthop_metric: (nexthop[*].metric), "
+    "nexthop_vni: (nexthop[*].vni), "
+    "nexthop_vrfLeak: (nexthop[*].vrfLeak), "
+    "nexthop_vtepIp: (nexthop[*].vtepIp)"
+    "}"
+)
+
 ROUTE_TABLE_POST_EXTRACTION_KEYS = [
     "network",
     "prefix",
@@ -47,9 +65,9 @@ class DeviceRouteTableDiff:
         self.reference_route_table = reference_route_table
         self.comparison_route_table = comparison_route_table
         self.vrf = vrf
-        print(
-            f"extract_data_from_json(reference_route_table, ROUTE_JMESPATH)= {extract_data_from_json(reference_route_table, ROUTE_JMESPATH)}"
-        )
+        # print(
+        #     f"extract_data_from_json(reference_route_table, ALT_ROUTE_JMESPATH)= {extract_data_from_json(reference_route_table, ALT_ROUTE_JMESPATH)}"
+        # )
         self._route_table_jdiff_results = None
         self.reference_route_dict = None
         self.comparison_route_dict = None
@@ -64,6 +82,9 @@ class DeviceRouteTableDiff:
             dict: A dictionary of routing table entries with top level keys being the vrfs and second level keys being networks.
         """
         vrfs_set = {route["vrf"] for route in route_table}
+        print(" ")
+        print(f"_convert_route_table_to_dict_by_vrf.vrfs_set {vrfs_set}")
+        print(" ")
         route_dict_by_vrf = {}
         for vrf in vrfs_set:
             routes_in_vrf = {route["network"]: route for route in route_table if route["vrf"] == vrf}
@@ -75,17 +96,32 @@ class DeviceRouteTableDiff:
         Includes JMESPATH data extraction provided by jdiff.
         """
         self.reference_route_dict = self._convert_route_table_to_dict_by_vrf(
-            extract_data_from_json(self.reference_route_table, ROUTE_JMESPATH)
+            extract_data_from_json(self.reference_route_table, ALT_ROUTE_JMESPATH)
         )
+        print(" ")
+        print(f"self.reference_route_dict: {self.reference_route_dict}")
+        print(" ")
+        import json
+
+        with open("reference_route_dict", "w") as f:
+            f.write(json.dumps(self.reference_route_dict))
         self.comparison_route_dict = self._convert_route_table_to_dict_by_vrf(
-            extract_data_from_json(self.comparison_route_table, ROUTE_JMESPATH)
+            extract_data_from_json(self.comparison_route_table, ALT_ROUTE_JMESPATH)
         )
+        print(" ")
+        print(f"self.comparison_route_dict: {self.comparison_route_dict}")
+        print(" ")
+        with open("comparison_route_dict", "w") as f:
+            f.write(json.dumps(self.comparison_route_dict))
 
     def _jdiff_routes_by_vrf(self):
         """Performs the diff between the routing tables using jdiff and updates the results object."""
         match = CheckType.create("exact_match")
+        print(" ")
+        print(f"_jdiff_routes_by_vrf: self.vrf: {self.vrf}")
+        print(" ")
         self._route_table_jdiff_results = match.evaluate(
-            (self.reference_route_dict.get(self.vrf, {})), (self.comparison_route_dict.get(self.vrf, {}))
+            self.reference_route_dict[self.vrf], self.comparison_route_dict[self.vrf]
         )
 
     def _get_routing_diff_summary(self) -> dict:
