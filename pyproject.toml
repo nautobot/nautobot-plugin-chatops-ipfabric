@@ -25,10 +25,11 @@ packages = [
 
 [tool.poetry.dependencies]
 python = "^3.7.1"
+nautobot = "1.3.0"
 nautobot-chatops = "^1.1.0"
 netutils = "^1.0.0"
-ipfabric-diagrams = "~6.0.2"
-ipfabric = "~6.0.9"
+ipfabric-diagrams = ">6.0.0"
+ipfabric = ">6.0.0"
 
 [tool.poetry.dev-dependencies]
 invoke = "*"
