@@ -34,6 +34,35 @@ inventory_field_mapping = {
 inventory_host_fields = ["ip", "mac"]
 inventory_host_func_mapper = {inventory_host_fields[0]: is_ip, inventory_host_fields[1]: is_valid_mac}
 
+table_mapping = {
+    "arp": {
+        "table": "ipfabric_api.client.technology.addressing.arp_table",
+        "title": "ARP Table",
+        "uri": "",
+    },
+}
+
+skip_properties = [
+    "stpDomain",
+    "siteKey",
+    "rd",
+    "taskKey",
+    "source",
+    "target",
+    "neiSiteKey",
+    "srcSiteKey",
+    "dstSiteKey",
+    "inDropsPktsPct",
+    "inDropsRate",
+    "inImpactDrops",
+    "outDropsPktsPct",
+    "outDropsRate",
+    "outImpactDrops",
+    "outBytesRate",
+    "uniqId",
+    "license",
+]
+
 try:
     ipfabric_api = IpFabric(
         base_url=settings.PLUGINS_CONFIG[CHATOPS_IPFABRIC].get("IPFABRIC_HOST"),
@@ -960,4 +989,83 @@ def find_host(dispatcher, filter_key=None, filter_value=None):
         ],
         title=f"Inventory Host with {filter_key.upper()} {filter_value}",
     )
+    return True
+
+
+@subcommand_of("ipfabric")
+def diff(dispatcher, snapshot, table, view):
+    """Get compare a table between two snapshots."""
+    sub_cmd = "diff"
+    current_snapshot_id = get_user_snapshot(dispatcher)
+
+    ipfabric_api.client.update()
+    if not snapshot:
+        prompt_snapshot_id(f"{BASE_CMD} {sub_cmd}", "What snapshot would like to compare with?", dispatcher)
+        return False
+    snapshot = snapshot.lower()
+    snapshot = IpFabric.LAST_LOCKED if snapshot == "$lastlocked" else snapshot
+    user = dispatcher.context["user_id"]
+    if snapshot not in ipfabric_api.client.snapshots:
+        dispatcher.send_markdown(f"<@{user}>, snapshot *{snapshot}* does not exist in IP Fabric.")
+        return False
+    snapshot_id = ipfabric_api.client.snapshots[snapshot].snapshot_id
+
+    table_choices = [(table_mapping[table]["title"], table) for table in table_mapping]
+    if not table:
+        dispatcher.prompt_from_menu(
+            f"{BASE_CMD} {sub_cmd} {snapshot_id}", "What table would like to compare?", table_choices, table_choices[0]
+        )
+        return False
+    try:
+        table_meta = table_mapping[table]
+        obj = eval(table_meta["table"])
+        # obj = obj.fetch(snapshot_id=current_snapshot_id)
+    except:
+        dispatcher.send_error(f"Unable to retrieve table for {table}")
+        return CommandStatusChoices.STATUS_FAILED
+
+    if not view:
+        dispatcher.prompt_from_menu(
+            f"{BASE_CMD} {sub_cmd} {snapshot_id} {table}",
+            "What kind of view would you like to see?",
+            [("Summary", "summary"), ("Detailed", "detailed")],
+            ("Summary", "summary"),
+        )
+        return False
+
+    diff = obj.compare(snapshot_id=snapshot_id, columns_ignore=skip_properties)
+
+    dispatcher.send_blocks(
+        [
+            *dispatcher.command_response_header(
+                f"{BASE_CMD}",
+                f"{sub_cmd}",
+                [
+                    ("Current Snapshot", current_snapshot_id),
+                    ("Snapshot", snapshot_id),
+                    ("Table", table),
+                    ("View", view),
+                ],
+                f"{table_meta['title']} diff",
+                ipfabric_logo(dispatcher),
+            ),
+            dispatcher.markdown_block(f"{str(ipfabric_api.ui_url)}{table_meta['uri']}"),
+        ]
+    )
+
+    if view == "summary":
+        dispatcher.send_markdown("\r\n".join([f"{key.title()}: {len(value)}" for key, value in diff.items()]))
+    elif view == "detailed":
+        for key in diff:
+            if len(diff[key]) > 0:
+                dispatcher.send_large_table(
+                    diff[key][0].keys(),
+                    [[row[i] for i in row] for row in diff[key]],
+                    title=f"{key.title()}",
+                )
+            else:
+                dispatcher.send_markdown(f"{key.title()}: None")
+    else:
+        dispatcher.send_error(f"{view} is not a valid option")
+        return CommandStatusChoices.STATUS_FAILED
     return True
