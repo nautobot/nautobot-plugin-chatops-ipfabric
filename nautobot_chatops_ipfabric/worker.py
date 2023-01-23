@@ -181,6 +181,7 @@ def set_snapshot(dispatcher, snapshot: str = None):
         dispatcher.send_markdown(f"<@{user}>, snapshot *{snapshot}* does not exist in IP Fabric.")
         return False
     snapshot_id = ipfabric_api.client.snapshots[snapshot].snapshot_id
+    ipfabric_api.client.snapshot_id = snapshot_id
     set_context(user, {"snapshot": snapshot_id})
 
     dispatcher.send_markdown(
