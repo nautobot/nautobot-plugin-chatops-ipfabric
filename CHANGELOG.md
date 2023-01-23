@@ -1,3 +1,14 @@
+## v3.0.0 - 2023-01-23
+
+## Added
+
+- #122 - Updated to support `python-ipfabric` v6 and Nautobot 1.5.
+- #123 - New command `get-loaded-snapshots` for greater snapshot details.
+
+## Changed
+
+- New codeowner added - @alhogan.
+
 ## v2.0.0 - 2022-09-22
 
 ## Added
