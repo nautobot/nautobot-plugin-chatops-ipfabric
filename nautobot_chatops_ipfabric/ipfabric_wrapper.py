@@ -119,8 +119,6 @@ class IpFabric:
         formatted_snapshots = {}
         snapshot_refs = []
         for snapshot_ref, snapshot in self.client.snapshots.items():
-            if snapshot.state != "loaded":
-                continue
             description = "🔒 " if snapshot.locked else ""
             if snapshot_ref in [self.LAST, self.PREV, self.LAST_LOCKED]:
                 description += f"{snapshot_ref}: "
@@ -149,12 +147,11 @@ class IpFabric:
                 self.client.snapshots[snap_id].name or self.EMPTY,
                 self.client.snapshots[snap_id].start.strftime("%d-%b-%y %H:%M:%S"),
                 self.client.snapshots[snap_id].end.strftime("%d-%b-%y %H:%M:%S"),
-                self.client.snapshots[snap_id].count,
-                self.client.snapshots[snap_id].licensed_count,
+                self.client.snapshots[snap_id].total_dev_count,
+                self.client.snapshots[snap_id].licensed_dev_count or self.EMPTY,
                 str(self.client.snapshots[snap_id].locked),
                 self.client.snapshots[snap_id].version or self.EMPTY,
-                getattr(self.client.snapshots[snap_id], "note", None)
-                or self.EMPTY,  # TODO: Note being added to ipf v5.0
+                getattr(self.client.snapshots[snap_id], "note", None) or self.EMPTY,
             )
             for snap_id in formatted_snapshots
         ]
