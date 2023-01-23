@@ -1056,6 +1056,7 @@ def diff(dispatcher, snapshot, table, view):
 
     if view == "summary":
         dispatcher.send_markdown("\r\n".join([f"{key.title()}: {len(value)}" for key, value in diff.items()]))
+        return CommandStatusChoices.STATUS_SUCCEEDED
     elif view == "detailed":
         for key in diff:
             if len(diff[key]) > 0:
@@ -1066,6 +1067,7 @@ def diff(dispatcher, snapshot, table, view):
                 )
             else:
                 dispatcher.send_markdown(f"{key.title()}: None")
+        return CommandStatusChoices.STATUS_SUCCEEDED
     else:
         dispatcher.send_error(f"{view} is not a valid option")
         return CommandStatusChoices.STATUS_FAILED
