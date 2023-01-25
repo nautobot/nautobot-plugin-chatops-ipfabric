@@ -997,7 +997,6 @@ def find_host(dispatcher, filter_key=None, filter_value=None):
 def diff(dispatcher, snapshot, table, view):
     """Get compare a table between two snapshots."""
     sub_cmd = "diff"
-    current_snapshot_id = get_user_snapshot(dispatcher)
 
     ipfabric_api.client.update()
     if not snapshot:
@@ -1020,7 +1019,6 @@ def diff(dispatcher, snapshot, table, view):
     try:
         table_meta = table_mapping[table]
         obj = eval(table_meta["table"])
-        # obj = obj.fetch(snapshot_id=current_snapshot_id)
     except:
         dispatcher.send_error(f"Unable to retrieve table for {table}")
         return CommandStatusChoices.STATUS_FAILED
@@ -1042,7 +1040,6 @@ def diff(dispatcher, snapshot, table, view):
                 f"{BASE_CMD}",
                 f"{sub_cmd}",
                 [
-                    ("Current Snapshot", current_snapshot_id),
                     ("Snapshot", snapshot_id),
                     ("Table", table),
                     ("View", view),
