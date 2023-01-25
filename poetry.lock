@@ -136,6 +136,17 @@ optional = false
 python-versions = ">=3.5"
 
 [[package]]
+<<<<<<< HEAD
+name = "asynctest"
+version = "0.13.0"
+description = "Enhance the standard unittest package with features for testing asyncio libraries"
+category = "main"
+optional = false
+python-versions = ">=3.5"
+
+[[package]]
+=======
+>>>>>>> a79c873acf34076598630b70a9405f1a60548577
 name = "attrs"
 version = "22.2.0"
 description = "Classes Without Boilerplate"
@@ -828,6 +839,17 @@ optional = false
 python-versions = ">=3.7"
 
 [[package]]
+<<<<<<< HEAD
+name = "frozenlist"
+version = "1.3.3"
+description = "A list-like structure which implements collections.abc.MutableSequence"
+category = "main"
+optional = false
+python-versions = ">=3.7"
+
+[[package]]
+=======
+>>>>>>> a79c873acf34076598630b70a9405f1a60548577
 name = "funcy"
 version = "1.17"
 description = "A fancy and practical functional tools"
