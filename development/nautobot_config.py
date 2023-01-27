@@ -111,14 +111,6 @@ DATABASES = {
 # Redis
 #
 
-#
-# Redis
-#
-
-#
-# Redis
-#
-
 # The django-redis cache is used to establish concurrent locks using Redis. The
 # django-rq settings will use the same instance/database by default.
 #
