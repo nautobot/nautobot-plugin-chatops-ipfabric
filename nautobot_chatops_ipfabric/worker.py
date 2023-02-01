@@ -1002,6 +1002,12 @@ def table_diff(
         )
         return False
 
+    if view in ("summary", "detailed"):
+        pass
+    else:
+        dispatcher.send_error(f"{view} is not a valid option")
+        return CommandStatusChoices.STATUS_FAILED
+
     if not snapshot:
         prompt_snapshot_id(
             f"{BASE_CMD} {sub_cmd} {category} {table} {view}", "What snapshot would like to compare with?", dispatcher
@@ -1046,7 +1052,7 @@ def table_diff(
 
     if view == "summary":
         dispatcher.send_markdown("\r\n".join([f"{key.title()}: {len(value)}" for key, value in diff.items()]))
-    elif view == "detailed":
+    else:
         for key in diff:
             if len(diff[key]) > 0:
                 dispatcher.send_large_table(
@@ -1056,7 +1062,4 @@ def table_diff(
                 )
             else:
                 dispatcher.send_markdown(f"{key.title()}: None")
-    else:
-        dispatcher.send_error(f"{view} is not a valid option")
-        return CommandStatusChoices.STATUS_FAILED
     return CommandStatusChoices.STATUS_SUCCEEDED
