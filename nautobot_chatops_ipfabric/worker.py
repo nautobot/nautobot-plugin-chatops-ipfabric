@@ -1,4 +1,4 @@
-"""Worker functions implementing Nautobot "ipfabric" command and subcommands."""
+"""Worker functions implementing Nautobot "ipfabric" command and subcommands."""  # pylint: disable=too-many-lines
 import logging
 import tempfile
 import os
@@ -965,7 +965,9 @@ def find_host(dispatcher, filter_key=None, filter_value=None):
 
 
 @subcommand_of("ipfabric")
-def table_diff(dispatcher, category, table, view, snapshot):
+def table_diff(
+    dispatcher, category, table, view, snapshot
+):  # pylint: disable=too-many-return-statements, too-many-branches
     """Get difference of a table between the current snapshot and the specified snapshot."""
     sub_cmd = "table-diff"
 
@@ -977,9 +979,6 @@ def table_diff(dispatcher, category, table, view, snapshot):
             ("", None),
         )
         return False
-    if category not in ipfabric_api.table_choices:
-        dispatcher.send_error(f"{category} is not a valid category.")
-        return CommandStatusChoices.STATUS_FAILED
 
     if not table:
         dispatcher.prompt_from_menu(
@@ -989,15 +988,10 @@ def table_diff(dispatcher, category, table, view, snapshot):
             ("", None),
         )
         return False
-    if table not in ipfabric_api.table_choices[category]:
-        dispatcher.send_error(f"{table} is not in the {category} category.")
-        return CommandStatusChoices.STATUS_FAILED
 
-    if category == "inventory":
-        obj = getattr(ipfabric_api.client.inventory, table)
-    else:
-        tech = getattr(ipfabric_api.client.technology, category)
-        obj = getattr(tech, table)
+    if category not in ipfabric_api.table_choices or table not in ipfabric_api.table_choices[category]:
+        dispatcher.send_error(f"{category}/{table} is not a valid table.")
+        return CommandStatusChoices.STATUS_FAILED
 
     if not view:
         dispatcher.prompt_from_menu(
@@ -1021,11 +1015,16 @@ def table_diff(dispatcher, category, table, view, snapshot):
         return False
     snapshot_id = ipfabric_api.client.snapshots[snapshot].snapshot_id
 
-    if obj:
-        diff = obj.compare(snapshot_id=snapshot_id)
+    if category == "inventory":
+        obj = getattr(ipfabric_api.client.inventory, table)
     else:
+        tech = getattr(ipfabric_api.client.technology, category)
+        obj = getattr(tech, table)
+
+    if not obj:
         dispatcher.send_error(f"Unable to load diff for {table}")
         return CommandStatusChoices.STATUS_FAILED
+    diff = obj.compare(snapshot_id=snapshot_id)
 
     dispatcher.send_blocks(
         [
