@@ -43,7 +43,7 @@ The following commands are available:
 - `/ipfabric end-to-end-path [src-ip] [dst-ip] [src-port] [dst-port] [protocol]`: Execute end-to-end path simulation between source and target IP address.
 - `/ipfabric routing [device] [protocol] [filter-opt]`: Get routing information for a device.
 - `/ipfabric wireless [option] [ssid]`: Get wireless information by client or ssid.
-- `/ipfabric table-diff [snapshot_id] [table] [view]`: Get the diff of table between the set snapshot and snapshot_id. Output view can be either a summary with counters or detailed with tables.
+- `/ipfabric table-diff [category] [table] [snapshot] [view]`: Get the diff of the category/table between the current snapshot and snapshot. Output view can be either a summary with counters or detailed with tables.
 
 IP Fabric uses a concept of snapshots which can include different devices and data. The plugin supports querying specific snapshots via the `/ipfabric set-snapshot` command. The snapshot is set per user and cached for all future commands. If a snapshot is not set, the commands will default to `$last` unless a specific snapshot id is required.
 
