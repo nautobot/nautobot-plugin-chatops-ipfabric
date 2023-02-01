@@ -34,35 +34,6 @@ inventory_field_mapping = {
 inventory_host_fields = ["ip", "mac"]
 inventory_host_func_mapper = {inventory_host_fields[0]: is_ip, inventory_host_fields[1]: is_valid_mac}
 
-table_mapping = {
-    "arp": {
-        "table": "ipfabric_api.client.technology.addressing.arp_table",
-        "title": "ARP Table",
-        "uri": "",
-    },
-}
-
-skip_properties = [
-    "stpDomain",
-    "siteKey",
-    "rd",
-    "taskKey",
-    "source",
-    "target",
-    "neiSiteKey",
-    "srcSiteKey",
-    "dstSiteKey",
-    "inDropsPktsPct",
-    "inDropsRate",
-    "inImpactDrops",
-    "outDropsPktsPct",
-    "outDropsRate",
-    "outImpactDrops",
-    "outBytesRate",
-    "uniqId",
-    "license",
-]
-
 try:
     ipfabric_api = IpFabric(
         base_url=settings.PLUGINS_CONFIG[CHATOPS_IPFABRIC].get("IPFABRIC_HOST"),
@@ -994,13 +965,53 @@ def find_host(dispatcher, filter_key=None, filter_value=None):
 
 
 @subcommand_of("ipfabric")
-def diff(dispatcher, snapshot, table, view):
-    """Get compare a table between two snapshots."""
-    sub_cmd = "diff"
+def table_diff(dispatcher, category, table, view, snapshot):
+    """Get difference of a table between the current snapshot and the specified snapshot."""
+    sub_cmd = "table-diff"
 
-    ipfabric_api.client.update()
+    if not category:
+        dispatcher.prompt_from_menu(
+            f"{BASE_CMD} {sub_cmd}",
+            "Select a category:",
+            [(choice, choice) for choice in ipfabric_api.table_choices],
+            ("", None),
+        )
+        return False
+    if category not in ipfabric_api.table_choices:
+        dispatcher.send_error(f"{category} is not a valid category.")
+        return CommandStatusChoices.STATUS_FAILED
+
+    if not table:
+        dispatcher.prompt_from_menu(
+            f"{BASE_CMD} {sub_cmd} {category}",
+            "What table would like to compare?",
+            [(choice, choice) for choice in ipfabric_api.table_choices.get(category)],
+            ("", None),
+        )
+        return False
+    if table not in ipfabric_api.table_choices[category]:
+        dispatcher.send_error(f"{table} is not in the {category} category.")
+        return CommandStatusChoices.STATUS_FAILED
+
+    if category == "inventory":
+        obj = getattr(ipfabric_api.client.inventory, table)
+    else:
+        tech = getattr(ipfabric_api.client.technology, category)
+        obj = getattr(tech, table)
+
+    if not view:
+        dispatcher.prompt_from_menu(
+            f"{BASE_CMD} {sub_cmd} {category} {table}",
+            "What kind of view would you like to see?",
+            [("Summary", "summary"), ("Detailed", "detailed")],
+            (None, ""),
+        )
+        return False
+
     if not snapshot:
-        prompt_snapshot_id(f"{BASE_CMD} {sub_cmd}", "What snapshot would like to compare with?", dispatcher)
+        prompt_snapshot_id(
+            f"{BASE_CMD} {sub_cmd} {category} {table} {view}", "What snapshot would like to compare with?", dispatcher
+        )
         return False
     snapshot = snapshot.lower()
     snapshot = IpFabric.LAST_LOCKED if snapshot == "$lastlocked" else snapshot
@@ -1010,29 +1021,11 @@ def diff(dispatcher, snapshot, table, view):
         return False
     snapshot_id = ipfabric_api.client.snapshots[snapshot].snapshot_id
 
-    table_choices = [(table_mapping[table]["title"], table) for table in table_mapping]
-    if not table:
-        dispatcher.prompt_from_menu(
-            f"{BASE_CMD} {sub_cmd} {snapshot_id}", "What table would like to compare?", table_choices, table_choices[0]
-        )
-        return False
-    try:
-        table_meta = table_mapping[table]
-        obj = eval(table_meta["table"])
-    except:
-        dispatcher.send_error(f"Unable to retrieve table for {table}")
+    if obj:
+        diff = obj.compare(snapshot_id=snapshot_id)
+    else:
+        dispatcher.send_error(f"Unable to load diff for {table}")
         return CommandStatusChoices.STATUS_FAILED
-
-    if not view:
-        dispatcher.prompt_from_menu(
-            f"{BASE_CMD} {sub_cmd} {snapshot_id} {table}",
-            "What kind of view would you like to see?",
-            [("Summary", "summary"), ("Detailed", "detailed")],
-            ("Summary", "summary"),
-        )
-        return False
-
-    diff = obj.compare(snapshot_id=snapshot_id, columns_ignore=skip_properties)
 
     dispatcher.send_blocks(
         [
@@ -1040,20 +1033,20 @@ def diff(dispatcher, snapshot, table, view):
                 f"{BASE_CMD}",
                 f"{sub_cmd}",
                 [
-                    ("Snapshot", snapshot_id),
+                    ("Category", category),
                     ("Table", table),
                     ("View", view),
+                    ("Snapshot", snapshot_id),
                 ],
-                f"{table_meta['title']} diff",
+                f"{category}/{table} diff",
                 ipfabric_logo(dispatcher),
             ),
-            dispatcher.markdown_block(f"{str(ipfabric_api.ui_url)}{table_meta['uri']}"),
+            dispatcher.markdown_block(f"{str(ipfabric_api.ui_url)}"),
         ]
     )
 
     if view == "summary":
         dispatcher.send_markdown("\r\n".join([f"{key.title()}: {len(value)}" for key, value in diff.items()]))
-        return CommandStatusChoices.STATUS_SUCCEEDED
     elif view == "detailed":
         for key in diff:
             if len(diff[key]) > 0:
@@ -1064,8 +1057,7 @@ def diff(dispatcher, snapshot, table, view):
                 )
             else:
                 dispatcher.send_markdown(f"{key.title()}: None")
-        return CommandStatusChoices.STATUS_SUCCEEDED
     else:
         dispatcher.send_error(f"{view} is not a valid option")
         return CommandStatusChoices.STATUS_FAILED
-    return True
+    return CommandStatusChoices.STATUS_SUCCEEDED
