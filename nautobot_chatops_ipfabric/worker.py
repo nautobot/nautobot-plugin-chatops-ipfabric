@@ -94,6 +94,15 @@ def prompt_find_host_filter_keys(action_id, help_text, dispatcher, choices=None)
     return False
 
 
+def ipf_api_client():
+    """Get the IP Fabric API Client handle.
+
+    Returns:
+        IpFabric: client instance to query IP Fabric server.
+    """
+    return ipfabric_api
+
+
 # SNAPSHOT COMMANDS
 
 
