@@ -40,9 +40,11 @@ The following commands are available:
 - `/ipfabric get-snapshot`: Get snapshot as reference for commands.
 - `/ipfabric device-list`: Get the device list.
 - `/ipfabric interfaces [device] [metric]`: Get interface metrics for a device.
-- `/ipfabric end-to-end-path [src-ip] [dst-ip] [src-port] [dst-port] [protocol]`: Execute end-to-end path simulation between source and target IP address.
+- `/ipfabric pathlookup [src-ip] [dst-ip] [src-port] [dst-port] [protocol]`: Path simulation diagram lookup between source and target IP address.
+- `/ipfabric pathlookup-icmp [src-ip] [dst-ip] [icmp-type]`: ICMP path simulation diagram lookup between source and target IP address.
 - `/ipfabric routing [device] [protocol] [filter-opt]`: Get routing information for a device.
 - `/ipfabric wireless [option] [ssid]`: Get wireless information by client or ssid.
+- `/ipfabric find-host [filter-key] [filter-value]`: Get host information using the inventory host table.
 - `/ipfabric table-diff [category] [table] [snapshot] [view]`: Get the diff of the category/table between the current snapshot and snapshot. Output view can be either a summary with counters or detailed with tables.
 
 IP Fabric uses a concept of snapshots which can include different devices and data. The plugin supports querying specific snapshots via the `/ipfabric set-snapshot` command. The snapshot is set per user and cached for all future commands. If a snapshot is not set, the commands will default to `$last` unless a specific snapshot id is required.
