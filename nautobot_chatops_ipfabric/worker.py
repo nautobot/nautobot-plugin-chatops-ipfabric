@@ -1,4 +1,4 @@
-"""Worker functions implementing Nautobot "ipfabric" command and subcommands."""
+"""Worker functions implementing Nautobot "ipfabric" command and subcommands."""  # pylint: disable=too-many-lines
 import logging
 import tempfile
 import os
@@ -161,6 +161,7 @@ def set_snapshot(dispatcher, snapshot: str = None):
         dispatcher.send_markdown(f"<@{user}>, snapshot *{snapshot}* does not exist in IP Fabric.")
         return False
     snapshot_id = ipfabric_api.client.snapshots[snapshot].snapshot_id
+    ipfabric_api.client.snapshot_id = snapshot_id
     set_context(user, {"snapshot": snapshot_id})
 
     dispatcher.send_markdown(
@@ -970,3 +971,104 @@ def find_host(dispatcher, filter_key=None, filter_value=None):
         title=f"Inventory Host with {filter_key.upper()} {filter_value}",
     )
     return True
+
+
+@subcommand_of("ipfabric")
+def table_diff(
+    dispatcher, category, table, view, snapshot
+):  # pylint: disable=too-many-return-statements, too-many-branches
+    """Get difference of a table between the current snapshot and the specified snapshot."""
+    sub_cmd = "table-diff"
+
+    if not category:
+        dispatcher.prompt_from_menu(
+            f"{BASE_CMD} {sub_cmd}",
+            "Select a category:",
+            [(choice, choice) for choice in ipfabric_api.table_choices],
+            ("", None),
+        )
+        return False
+
+    if not table:
+        dispatcher.prompt_from_menu(
+            f"{BASE_CMD} {sub_cmd} {category}",
+            "What table would like to compare?",
+            [(choice, choice) for choice in ipfabric_api.table_choices.get(category)],
+            ("", None),
+        )
+        return False
+
+    if category not in ipfabric_api.table_choices or table not in ipfabric_api.table_choices[category]:
+        dispatcher.send_error(f"{category}/{table} is not a valid table.")
+        return CommandStatusChoices.STATUS_FAILED
+
+    if not view:
+        dispatcher.prompt_from_menu(
+            f"{BASE_CMD} {sub_cmd} {category} {table}",
+            "What kind of view would you like to see?",
+            [("Summary", "summary"), ("Detailed", "detailed")],
+            (None, ""),
+        )
+        return False
+
+    if view in ("summary", "detailed"):
+        pass
+    else:
+        dispatcher.send_error(f"{view} is not a valid option")
+        return CommandStatusChoices.STATUS_FAILED
+
+    if not snapshot:
+        prompt_snapshot_id(
+            f"{BASE_CMD} {sub_cmd} {category} {table} {view}", "What snapshot would like to compare with?", dispatcher
+        )
+        return False
+    snapshot = snapshot.lower()
+    snapshot = IpFabric.LAST_LOCKED if snapshot == "$lastlocked" else snapshot
+    user = dispatcher.context["user_id"]
+    if snapshot not in ipfabric_api.client.snapshots:
+        dispatcher.send_markdown(f"<@{user}>, snapshot *{snapshot}* does not exist in IP Fabric.")
+        return False
+    snapshot_id = ipfabric_api.client.snapshots[snapshot].snapshot_id
+
+    if category == "inventory":
+        obj = getattr(ipfabric_api.client.inventory, table)
+    else:
+        tech = getattr(ipfabric_api.client.technology, category)
+        obj = getattr(tech, table)
+
+    if not obj:
+        dispatcher.send_error(f"Unable to load diff for {table}")
+        return CommandStatusChoices.STATUS_FAILED
+    diff = obj.compare(snapshot_id=snapshot_id)
+
+    dispatcher.send_blocks(
+        [
+            *dispatcher.command_response_header(
+                f"{BASE_CMD}",
+                f"{sub_cmd}",
+                [
+                    ("Category", category),
+                    ("Table", table),
+                    ("View", view),
+                    ("Snapshot", snapshot_id),
+                ],
+                f"{category}/{table} diff",
+                ipfabric_logo(dispatcher),
+            ),
+            dispatcher.markdown_block(f"{str(ipfabric_api.ui_url)}"),
+        ]
+    )
+
+    if view == "summary":
+        dispatcher.send_markdown("\r\n".join([f"{key.title()}: {len(value)}" for key, value in diff.items()]))
+    else:
+        for key in diff:
+            if len(diff[key]) > 0:
+                dispatcher.send_large_table(
+                    diff[key][0].keys(),
+                    [[row[i] for i in row] for row in diff[key]],
+                    title=f"{key.title()}",
+                )
+            else:
+                dispatcher.send_markdown(f"{key.title()}: None")
+    return CommandStatusChoices.STATUS_SUCCEEDED
