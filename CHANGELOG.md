@@ -1,9 +1,15 @@
+## v3.0.1 - 2023-02-03
+## Added
+
+- #126 - Add `diff` command to compare tables between snapshots.
+- #128 - Provide a function to access the IP Fabric API client.
+
 ## v3.0.0 - 2023-01-23
 
 ## Added
 
 - #122 - Updated to support `python-ipfabric` v6 and Nautobot 1.5.
-- #123 - New command `get-loaded-snapshots` for greater snapshot details.
+- #123 - Added @alhogan as a codeowner.
 
 ## Changed
 
