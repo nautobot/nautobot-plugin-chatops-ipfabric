@@ -24,11 +24,12 @@ packages = [
 "ipfabric" = "nautobot_chatops_ipfabric.worker:ipfabric"
 
 [tool.poetry.dependencies]
-python = "^3.7.1"
+python = "^3.8"
 nautobot-chatops = "^1.1.0"
 netutils = "^1.0.0"
 ipfabric-diagrams = "~6.0.2"
 ipfabric = "~6.0.9"
+pandas = "^1.5.3"
 
 [tool.poetry.dev-dependencies]
 invoke = "*"
