@@ -39,6 +39,7 @@ try:
         base_url=settings.PLUGINS_CONFIG[CHATOPS_IPFABRIC].get("IPFABRIC_HOST"),
         token=settings.PLUGINS_CONFIG[CHATOPS_IPFABRIC].get("IPFABRIC_API_TOKEN"),
         verify=settings.PLUGINS_CONFIG[CHATOPS_IPFABRIC].get("IPFABRIC_VERIFY"),
+        timeout=20,
     )
 except Exception as exp:  # pylint: disable=W0703
     logger.error("Could not load IP Fabric client. Please verify HTTP access to the IP Fabric instance %s", exp)
