@@ -1,3 +1,5 @@
+# The code in this repository has been migrated to the [Nautobot ChatOps Repository](https://github.com/nautobot/nautobot-plugin-chatops) as an integration - read more about it in the [ChatOps Docs](https://docs.nautobot.com/projects/chatops/en/latest/admin/install/)! As of July 2023 this repository has been **FROZEN** - all development / issues / discussions for this integration are in the [Nautobot ChatOps Repository](https://github.com/nautobot/nautobot-plugin-chatops) going forward.
+
 # IP Fabric ChatOps
 
 An IP Fabric ChatOps plugin for [Nautobot](https://github.com/nautobot/nautobot).
